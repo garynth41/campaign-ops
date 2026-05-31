@@ -206,8 +206,8 @@
         </div>
         <div class="nav-section"><div class="nav-section-title">Voter Operations</div>
             <div class="nav-item" data-view="constituencies"><span class="nav-icon">🗺️</span> Constituencies</div>
-            <div class="nav-item" data-view="pdsManage"><span class="nav-icon">📐</span> Polling Divisions</div>
-            <div class="nav-item" data-view="stations"><span class="nav-icon">📍</span> Polling Stations</div>
+            <div class="nav-item" data-view="pdsManage"><span class="nav-icon">📐</span> Polling Stations</div>
+            <div class="nav-item" data-view="stations"><span class="nav-icon">📍</span> Voting Centers</div>
             <div class="nav-item" data-view="households"><span class="nav-icon">🏠</span> Households</div>
             <div class="nav-item" data-view="casework"><span class="nav-icon">📋</span> Constituent Service</div>
             <div class="nav-item" data-view="influencers"><span class="nav-icon">⭐</span> Community Leaders</div>
@@ -331,9 +331,19 @@
 
 <!-- ISLANDS -->
 <div class="view hidden" id="islandsView">
+    <div class="page-header"><h3>Island Management</h3></div>
+    <div class="card mb-3"><div class="card-body">
+        <h4 style="margin-bottom:.5rem">Active View Scope</h4>
+        <p class="text-muted" style="font-size:.8125rem;margin-bottom:.875rem">Choose which island to work in. Selecting one hides all data from the other across the entire application.</p>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+            <button class="btn island-scope-btn" data-scope="all" onclick="setIslandFilter('all')">🌍 Both Islands</button>
+            <button class="btn island-scope-btn" data-scope="st-kitts" onclick="setIslandFilter('st-kitts')">🏝️ St. Kitts Only</button>
+            <button class="btn island-scope-btn" data-scope="nevis" onclick="setIslandFilter('nevis')">🌴 Nevis Only</button>
+        </div>
+    </div></div>
     <div class="grid-2 mb-3">
-        <div class="island-card" id="kittsCard" onclick="setIslandFilter('st-kitts')"><div class="island-icon">🏝️</div><h3>St. Kitts</h3><p class="text-muted mb-2">8 Constituencies • 24 PDs</p><div class="stats-grid" style="grid-template-columns:repeat(2,1fr);gap:.75rem;margin-bottom:0"><div><div style="font-size:1.5rem;font-weight:700" id="kittsVoters">0</div><div class="text-muted" style="font-size:.75rem">Voters</div></div><div><div style="font-size:1.5rem;font-weight:700;color:var(--success)" id="kittsSupporters">0</div><div class="text-muted" style="font-size:.75rem">Supporters</div></div></div></div>
-        <div class="island-card" id="nevisCard" onclick="setIslandFilter('nevis')"><div class="island-icon">🌴</div><h3>Nevis</h3><p class="text-muted mb-2">3 Constituencies • 9 PDs</p><div class="stats-grid" style="grid-template-columns:repeat(2,1fr);gap:.75rem;margin-bottom:0"><div><div style="font-size:1.5rem;font-weight:700" id="nevisVoters">0</div><div class="text-muted" style="font-size:.75rem">Voters</div></div><div><div style="font-size:1.5rem;font-weight:700;color:var(--success)" id="nevisSupporters">0</div><div class="text-muted" style="font-size:.75rem">Supporters</div></div></div></div>
+        <div class="island-card" id="kittsCard" onclick="setIslandFilter('st-kitts')"><div class="island-icon">🏝️</div><h3>St. Kitts</h3><p class="text-muted mb-2" id="kittsGeo">— Constituencies • — Polling Stations</p><div class="stats-grid" style="grid-template-columns:repeat(3,1fr);gap:.75rem;margin-bottom:0"><div><div style="font-size:1.5rem;font-weight:700" id="kittsVoters">0</div><div class="text-muted" style="font-size:.75rem">Voters</div></div><div><div style="font-size:1.5rem;font-weight:700;color:var(--success)" id="kittsSupporters">0</div><div class="text-muted" style="font-size:.75rem">Supporters</div></div><div><div style="font-size:1.5rem;font-weight:700;color:var(--purple)" id="kittsVoted">0</div><div class="text-muted" style="font-size:.75rem">Voted</div></div></div></div>
+        <div class="island-card" id="nevisCard" onclick="setIslandFilter('nevis')"><div class="island-icon">🌴</div><h3>Nevis</h3><p class="text-muted mb-2" id="nevisGeo">— Constituencies • — Polling Stations</p><div class="stats-grid" style="grid-template-columns:repeat(3,1fr);gap:.75rem;margin-bottom:0"><div><div style="font-size:1.5rem;font-weight:700" id="nevisVoters">0</div><div class="text-muted" style="font-size:.75rem">Voters</div></div><div><div style="font-size:1.5rem;font-weight:700;color:var(--success)" id="nevisSupporters">0</div><div class="text-muted" style="font-size:.75rem">Supporters</div></div><div><div style="font-size:1.5rem;font-weight:700;color:var(--purple)" id="nevisVoted">0</div><div class="text-muted" style="font-size:.75rem">Voted</div></div></div></div>
     </div>
     <div class="card"><div class="card-header">Island Comparison</div><div class="card-body"><div class="chart-container"><canvas id="islandCompareChart"></canvas></div></div></div>
 </div>
@@ -346,7 +356,7 @@
 
 <!-- POLLING DIVISIONS MANAGEMENT -->
 <div class="view hidden" id="pdsManageView">
-    <div class="page-header"><h3>Polling Divisions</h3><div class="btn-group"><button class="btn btn-warning" onclick="reseedVoters()">🌱 Reseed All Voters (160–526 per PD)</button><button class="btn btn-primary" onclick="openPDModal()">+ Add Polling Division</button></div></div>
+    <div class="page-header"><h3>Polling Stations</h3><div class="btn-group"><button class="btn btn-warning" onclick="reseedVoters()">🌱 Reseed All Voters</button><button class="btn btn-info" onclick="populateProfiles()">👤 Populate Profiles (28.5%)</button><button class="btn btn-info" onclick="populateCasework()">📋 Generate Casework (10%)</button><button class="btn btn-primary" onclick="openPDModal()">+ Add Polling Station</button></div></div>
     <div class="filter-bar">
         <select class="form-input" id="pdsConstFilter" onchange="renderPDsManage()"><option value="">All Constituencies</option></select>
         <input type="text" class="form-input" id="pdsSearch" placeholder="Search name/area..." oninput="renderPDsManage()">
@@ -360,7 +370,7 @@
 
 <!-- POLLING STATIONS -->
 <div class="view hidden" id="stationsView">
-    <div class="page-header"><h3>Polling Stations</h3><button class="btn btn-primary" onclick="openStationModal()">+ Add Polling Station</button></div>
+    <div class="page-header"><h3>Voting Centers</h3><button class="btn btn-primary" onclick="openStationModal()">+ Add Voting Center</button></div>
     <div class="filter-bar">
         <select class="form-input" id="stationConstFilter" onchange="renderStations()"><option value="">All Constituencies</option></select>
         <input type="text" class="form-input" id="stationSearch" placeholder="Search by name..." oninput="renderStations()">
@@ -454,7 +464,7 @@
                 <hr style="border:none;border-top:1px solid var(--border);margin:1rem 0">
                 <h5 style="font-size:.8125rem;margin-bottom:.5rem">2. Target Segment</h5>
                 <div class="form-row"><div class="form-group"><label>Support Level</label><select class="form-input" id="segSupport"><option value="">Any</option><option>Strong</option><option>Medium</option><option>Soft</option><option>Undecided</option><option>Opposition</option><option>Unknown</option></select></div><div class="form-group"><label>Constituency</label><select class="form-input" id="segConst" onchange="updateSegPD()"><option value="">Any</option></select></div></div>
-                <div class="form-row"><div class="form-group"><label>Polling Division</label><select class="form-input" id="segPD"><option value="">Any</option></select></div><div class="form-group"><label>Commitment</label><select class="form-input" id="segCommitment"><option value="">Any</option><option>Definite</option><option>Likely</option><option>Maybe</option><option>Unlikely</option></select></div></div>
+                <div class="form-row"><div class="form-group"><label>Polling Station</label><select class="form-input" id="segPD"><option value="">Any</option></select></div><div class="form-group"><label>Commitment</label><select class="form-input" id="segCommitment"><option value="">Any</option><option>Definite</option><option>Likely</option><option>Maybe</option><option>Unlikely</option></select></div></div>
                 <div class="form-row"><div class="form-group"><label>Core Tribe</label><select class="form-input" id="segTribe"><option value="">Any</option></select></div><div class="form-group"><label>Status</label><select class="form-input" id="segStatus"><option value="">Any</option><option value="not-voted">Not Yet Voted</option><option value="needs-ride">Needs Ride</option><option value="never-contacted">Never Contacted</option></select></div></div>
                 <div class="form-group"><label style="display:flex;align-items:center;gap:.5rem;font-weight:400;font-size:.8125rem"><input type="checkbox" id="segHasPhone" checked style="width:auto"> Only include voters with a phone number</label></div>
                 <button class="btn btn-primary btn-block" onclick="buildCampaignQueue()">Generate Send Queue →</button>
@@ -491,7 +501,7 @@
 
     <!-- TAB: Walk List -->
     <div class="canvass-tab-content" data-vtab="walk">
-        <div class="grid-3 mb-3" style="grid-template-columns:200px 200px 1fr"><div class="form-group"><label>Constituency</label><select class="form-input" id="walkConst" onchange="updateWalkPD()"><option value="">Select...</option></select></div><div class="form-group"><label>Polling Division</label><select class="form-input" id="walkPD"><option value="">All PDs</option></select></div><div class="form-group"><label>Filter</label><select class="form-input" id="walkFilter"><option value="all-supporters">All Supporters</option><option value="not-contacted">Not Contacted</option><option value="not-voted">Not Voted</option><option value="needs-ride">Needs Ride</option><option value="undecided">Undecided</option></select></div></div>
+        <div class="grid-3 mb-3" style="grid-template-columns:200px 200px 1fr"><div class="form-group"><label>Constituency</label><select class="form-input" id="walkConst" onchange="updateWalkPD()"><option value="">Select...</option></select></div><div class="form-group"><label>Polling Station</label><select class="form-input" id="walkPD"><option value="">All PDs</option></select></div><div class="form-group"><label>Filter</label><select class="form-input" id="walkFilter"><option value="all-supporters">All Supporters</option><option value="not-contacted">Not Contacted</option><option value="not-voted">Not Voted</option><option value="needs-ride">Needs Ride</option><option value="undecided">Undecided</option></select></div></div>
         <div class="mb-3"><button class="btn btn-primary" onclick="generateWalkList()">📝 Generate Walk List</button> <button class="btn btn-outline" onclick="printCurrentView()">🖨️ Print</button> <button class="btn btn-success" onclick="startCanvassFromWalkList()">🚪 Canvass This List</button></div>
         <div class="card"><div class="card-header"><span>Walk List</span></div><div class="card-body" id="walkListContent"><p class="text-muted text-center">Select a constituency and generate a walk list</p></div></div>
     </div>
@@ -501,7 +511,7 @@
         <div id="canvassSetup">
             <div class="card"><div class="card-body">
                 <h4 style="margin-bottom:1rem">🚪 Start Canvassing</h4>
-                <div class="form-row-3"><div class="form-group"><label>Constituency</label><select class="form-input" id="cvConst" onchange="updateCvPD()"><option value="">Select...</option></select></div><div class="form-group"><label>Polling Division</label><select class="form-input" id="cvPD"><option value="">All PDs</option></select></div><div class="form-group"><label>Who to visit</label><select class="form-input" id="cvFilter"><option value="undecided">Undecided / Persuadable</option><option value="not-contacted">Never Contacted</option><option value="all">Everyone</option><option value="supporters">Supporters (GOTV)</option></select></div></div>
+                <div class="form-row-3"><div class="form-group"><label>Constituency</label><select class="form-input" id="cvConst" onchange="updateCvPD()"><option value="">Select...</option></select></div><div class="form-group"><label>Polling Station</label><select class="form-input" id="cvPD"><option value="">All PDs</option></select></div><div class="form-group"><label>Who to visit</label><select class="form-input" id="cvFilter"><option value="undecided">Undecided / Persuadable</option><option value="not-contacted">Never Contacted</option><option value="all">Everyone</option><option value="supporters">Supporters (GOTV)</option></select></div></div>
                 <button class="btn btn-primary btn-lg btn-block" onclick="startCanvass()">Start Walking →</button>
             </div></div>
         </div>
@@ -531,10 +541,10 @@
 
 <!-- GOTV RACE -->
 <div class="view hidden" id="gotvRaceView">
-    <div class="page-header"><h3>🏁 GOTV Race — Live Turnout by Polling Division</h3><button class="btn btn-outline" onclick="renderGOTVRace()">🔄 Refresh</button></div>
+    <div class="page-header"><h3>🏁 GOTV Race — Live Turnout by Polling Station</h3><button class="btn btn-outline" onclick="renderGOTVRace()">🔄 Refresh</button></div>
     <div class="stats-grid" id="raceStats"></div>
     <div class="grid-2">
-        <div class="card"><div class="card-header">🏆 Polling Division Leaderboard</div><div class="card-body" id="raceLeaderboard"></div></div>
+        <div class="card"><div class="card-header">🏆 Polling Station Leaderboard</div><div class="card-body" id="raceLeaderboard"></div></div>
         <div class="card"><div class="card-header">🗺️ Constituency Standings</div><div class="card-body" id="raceConstBoard"></div></div>
     </div>
 </div>
@@ -663,7 +673,7 @@
     <div class="voter-tab-content" data-tab="basic">
         <div class="form-row"><div class="form-group"><label>First Name *</label><input type="text" class="form-input" id="voterFirst"></div><div class="form-group"><label>Last Name *</label><input type="text" class="form-input" id="voterLast"></div></div>
         <div class="form-row-3"><div class="form-group"><label>Voter ID *</label><input type="text" class="form-input" id="voterVoterId"></div><div class="form-group"><label>DOB</label><input type="date" class="form-input" id="voterDob"></div><div class="form-group"><label>Gender</label><select class="form-input" id="voterGender"><option value="">-</option><option>Male</option><option>Female</option><option>Other</option></select></div></div>
-        <div class="form-row-3"><div class="form-group"><label>Constituency *</label><select class="form-input" id="voterConst" onchange="updateVoterPDSelect();updateVoterStationSelect();updateVoterHHSelect()"></select></div><div class="form-group"><label>PD *</label><select class="form-input" id="voterPD" onchange="updateVoterStationSelect();updateVoterHHSelect()"></select></div><div class="form-group"><label>Polling Station</label><select class="form-input" id="voterStation"><option value="">-</option></select></div></div>
+        <div class="form-row-3"><div class="form-group"><label>Constituency *</label><select class="form-input" id="voterConst" onchange="updateVoterPDSelect();updateVoterStationSelect();updateVoterHHSelect()"></select></div><div class="form-group"><label>PD *</label><select class="form-input" id="voterPD" onchange="updateVoterStationSelect();updateVoterHHSelect()"></select></div><div class="form-group"><label>Voting Center</label><select class="form-input" id="voterStation"><option value="">-</option></select></div></div>
         <div class="form-row"><div class="form-group"><label>Household</label><select class="form-input" id="voterHousehold"><option value="">-</option></select></div><div class="form-group"><label>Household Role</label><select class="form-input" id="voterHHRole"><option value="">-</option><option value="head">Head</option><option value="spouse">Spouse</option><option value="child">Child</option><option value="parent">Parent</option><option value="sibling">Sibling</option><option value="other">Other</option></select></div></div>
         <div class="form-row"><div class="form-group"><label>Phone</label><input type="tel" class="form-input" id="voterPhone"></div><div class="form-group"><label>Email</label><input type="email" class="form-input" id="voterEmail"></div></div>
         <div class="form-row"><div class="form-group"><label>Occupation</label><input type="text" class="form-input" id="voterOccupation"></div><div class="form-group"><label>Address</label><input type="text" class="form-input" id="voterAddress"></div></div>
@@ -706,10 +716,10 @@
 </div></div>
 
 <!-- POLLING STATION MODAL -->
-<div class="modal-overlay" id="stationModal"><div class="modal"><div class="modal-header"><h3 class="modal-title" id="stationModalTitle">Add Polling Station</h3><button class="modal-close" onclick="closeModal('stationModal')">×</button></div>
+<div class="modal-overlay" id="stationModal"><div class="modal"><div class="modal-header"><h3 class="modal-title" id="stationModalTitle">Add Voting Center</h3><button class="modal-close" onclick="closeModal('stationModal')">×</button></div>
 <div class="modal-body"><input type="hidden" id="editStationId">
     <div class="form-row"><div class="form-group"><label>Name *</label><input type="text" class="form-input" id="stationName" placeholder="e.g., Sandy Point Community Centre"></div><div class="form-group"><label>Code</label><input type="text" class="form-input" id="stationCode" placeholder="e.g., PS-001"></div></div>
-    <div class="form-row"><div class="form-group"><label>Constituency *</label><select class="form-input" id="stationConst" onchange="updateStationPDSelect()"></select></div><div class="form-group"><label>Polling Division</label><select class="form-input" id="stationPD"><option value="">All / Any PD</option></select></div></div>
+    <div class="form-row"><div class="form-group"><label>Constituency *</label><select class="form-input" id="stationConst" onchange="updateStationPDSelect()"></select></div><div class="form-group"><label>Polling Station</label><select class="form-input" id="stationPD"><option value="">All / Any PD</option></select></div></div>
     <div class="form-group"><label>Address</label><input type="text" class="form-input" id="stationAddress"></div>
     <div class="form-row"><div class="form-group"><label>Capacity</label><input type="number" class="form-input" id="stationCapacity" placeholder="e.g., 800"></div><div class="form-group"></div></div>
     <div class="form-group"><label>Notes</label><textarea class="form-input" id="stationNotes" rows="2"></textarea></div>
@@ -727,7 +737,7 @@
 <div class="modal-overlay" id="donationModal"><div class="modal"><div class="modal-header"><h3 class="modal-title">Record Donation</h3><button class="modal-close" onclick="closeModal('donationModal')">×</button></div><div class="modal-body"><div class="form-row"><div class="form-group"><label>Donor *</label><input type="text" class="form-input" id="donorName"></div><div class="form-group"><label>Amount *</label><input type="number" class="form-input" id="donAmount" min="0" step="0.01"></div></div><div class="form-row"><div class="form-group"><label>Method</label><select class="form-input" id="donMethod"><option value="Cash">Cash</option><option value="Check">Check</option><option value="Bank Transfer">Bank Transfer</option><option value="Online">Online</option></select></div><div class="form-group"><label>Date</label><input type="date" class="form-input" id="donDate"></div></div><div class="form-group"><label>Notes</label><textarea class="form-input" id="donNotes" rows="2"></textarea></div></div><div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('donationModal')">Cancel</button><button class="btn btn-success" onclick="saveDonation()">Record</button></div></div></div>
 <div class="modal-overlay" id="userModal"><div class="modal"><div class="modal-header"><h3 class="modal-title">Add User</h3><button class="modal-close" onclick="closeModal('userModal')">×</button></div><div class="modal-body"><div class="form-row"><div class="form-group"><label>First Name *</label><input type="text" class="form-input" id="userFirst"></div><div class="form-group"><label>Last Name *</label><input type="text" class="form-input" id="userLast"></div></div><div class="form-group"><label>Email *</label><input type="email" class="form-input" id="userEmail"></div><div class="form-row"><div class="form-group"><label>Password *</label><input type="password" class="form-input" id="userPassword"></div><div class="form-group"><label>Role</label><select class="form-input" id="userRoleSelect"><option value="volunteer">Volunteer</option><option value="coordinator">Coordinator</option><option value="manager">Manager</option><option value="admin">Admin</option></select></div></div></div><div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('userModal')">Cancel</button><button class="btn btn-primary" onclick="saveUser()">Add</button></div></div></div>
 <div class="modal-overlay" id="watcherModal"><div class="modal"><div class="modal-header"><h3 class="modal-title">Add Poll Watcher</h3><button class="modal-close" onclick="closeModal('watcherModal')">×</button></div><div class="modal-body"><div class="form-row"><div class="form-group"><label>First Name *</label><input type="text" class="form-input" id="watcherFirst"></div><div class="form-group"><label>Last Name *</label><input type="text" class="form-input" id="watcherLast"></div></div><div class="form-group"><label>Phone *</label><input type="tel" class="form-input" id="watcherPhone"></div><div class="form-group"><label>Assign to PD</label><select class="form-input" id="watcherPD"><option value="">Unassigned</option></select></div></div><div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('watcherModal')">Cancel</button><button class="btn btn-primary" onclick="saveWatcher()">Add</button></div></div></div>
-<div class="modal-overlay" id="watcherReportModal"><div class="modal"><div class="modal-header"><h3 class="modal-title">File PD Report</h3><button class="modal-close" onclick="closeModal('watcherReportModal')">×</button></div><div class="modal-body"><div class="form-group"><label>Polling Division *</label><select class="form-input" id="reportPD"><option value="">Select...</option></select></div><div class="form-group"><label>Type *</label><select class="form-input" id="reportType"><option value="Update">General Update</option><option value="Turnout">Turnout Report</option><option value="Issue">Issue/Alert</option></select></div><div class="form-group"><label>Report *</label><textarea class="form-input" id="reportText" rows="3" placeholder="Describe what's happening..."></textarea></div></div><div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('watcherReportModal')">Cancel</button><button class="btn btn-info" onclick="saveWatcherReport()">File Report</button></div></div></div>
+<div class="modal-overlay" id="watcherReportModal"><div class="modal"><div class="modal-header"><h3 class="modal-title">File PD Report</h3><button class="modal-close" onclick="closeModal('watcherReportModal')">×</button></div><div class="modal-body"><div class="form-group"><label>Polling Station *</label><select class="form-input" id="reportPD"><option value="">Select...</option></select></div><div class="form-group"><label>Type *</label><select class="form-input" id="reportType"><option value="Update">General Update</option><option value="Turnout">Turnout Report</option><option value="Issue">Issue/Alert</option></select></div><div class="form-group"><label>Report *</label><textarea class="form-input" id="reportText" rows="3" placeholder="Describe what's happening..."></textarea></div></div><div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('watcherReportModal')">Cancel</button><button class="btn btn-info" onclick="saveWatcherReport()">File Report</button></div></div></div>
 <div class="modal-overlay" id="scriptModal"><div class="modal modal-lg"><div class="modal-header"><h3 class="modal-title">Create Script Template</h3><button class="modal-close" onclick="closeModal('scriptModal')">×</button></div><div class="modal-body"><div class="form-group"><label>Template Name *</label><input type="text" class="form-input" id="scriptName" placeholder="e.g., GOTV Reminder"></div><div class="form-group"><label>Channel</label><select class="form-input" id="scriptChannel"><option value="whatsapp">WhatsApp</option><option value="sms">SMS</option><option value="call">Call Script</option></select></div><div class="form-group"><label>Message *</label><textarea class="form-input" id="scriptBody" rows="5" placeholder="Use {firstName}, {lastName}, {constituency}, {pd} as merge fields..."></textarea></div><p class="text-muted" style="font-size:.6875rem">Available: {firstName} {lastName} {constituency} {pd} {phone} {category} {commitment}</p></div><div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('scriptModal')">Cancel</button><button class="btn btn-primary" onclick="saveScriptTemplate()">Save</button></div></div></div>
 <div class="modal-overlay" id="shiftModal"><div class="modal"><div class="modal-header"><h3 class="modal-title">Add Shift</h3><button class="modal-close" onclick="closeModal('shiftModal')">×</button></div><div class="modal-body"><div class="form-group"><label>Date *</label><input type="date" class="form-input" id="shiftDate"></div><div class="form-row"><div class="form-group"><label>Start *</label><input type="time" class="form-input" id="shiftStart"></div><div class="form-group"><label>End *</label><input type="time" class="form-input" id="shiftEnd"></div></div><div class="form-group"><label>Role *</label><select class="form-input" id="shiftRole"><option value="Canvasser">Canvasser</option><option value="Phone Bank">Phone Bank</option><option value="Poll Watcher">Poll Watcher</option><option value="Driver">Driver</option><option value="Office">Office</option></select></div><div class="form-group"><label>Location</label><input type="text" class="form-input" id="shiftLocation" placeholder="e.g., HQ, C3-PD1"></div><div class="form-group"><label>Assign To</label><select class="form-input" id="shiftAssignee"><option value="">Open</option></select></div></div><div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('shiftModal')">Cancel</button><button class="btn btn-primary" onclick="saveShift()">Add</button></div></div></div>
 
@@ -743,7 +753,7 @@
 </div></div>
 
 <!-- POLLING DIVISION MODAL -->
-<div class="modal-overlay" id="pdModal"><div class="modal"><div class="modal-header"><h3 class="modal-title" id="pdModalTitle">Add Polling Division</h3><button class="modal-close" onclick="closeModal('pdModal')">×</button></div>
+<div class="modal-overlay" id="pdModal"><div class="modal"><div class="modal-header"><h3 class="modal-title" id="pdModalTitle">Add Polling Station</h3><button class="modal-close" onclick="closeModal('pdModal')">×</button></div>
 <div class="modal-body"><input type="hidden" id="editPDId">
     <div class="form-row"><div class="form-group"><label>ID *</label><input type="text" class="form-input" id="pdId" placeholder="e.g., C1-PD6"></div><div class="form-group"><label>Code *</label><input type="text" class="form-input" id="pdCode" placeholder="e.g., C1-PD6"></div></div>
     <div class="form-group"><label>Name *</label><input type="text" class="form-input" id="pdName" placeholder="e.g., Cayon West"></div>
@@ -758,7 +768,7 @@
 <div class="modal-body"><input type="hidden" id="editCaptainId">
     <div class="form-row"><div class="form-group"><label>First Name *</label><input type="text" class="form-input" id="capFirst"></div><div class="form-group"><label>Last Name *</label><input type="text" class="form-input" id="capLast"></div></div>
     <div class="form-row"><div class="form-group"><label>Phone</label><input type="tel" class="form-input" id="capPhone"></div><div class="form-group"><label>Level *</label><select class="form-input" id="capLevel" onchange="updateCaptainParentVisibility()"><option value="block">Block Captain</option><option value="pd">PD Captain</option></select></div></div>
-    <div class="form-row"><div class="form-group"><label>Constituency *</label><select class="form-input" id="capConst" onchange="updateCapPDSelect();updateCaptainParentSelect()"></select></div><div class="form-group"><label>Polling Division</label><select class="form-input" id="capPD" onchange="updateCaptainParentSelect()"><option value="">-</option></select></div></div>
+    <div class="form-row"><div class="form-group"><label>Constituency *</label><select class="form-input" id="capConst" onchange="updateCapPDSelect();updateCaptainParentSelect()"></select></div><div class="form-group"><label>Polling Station</label><select class="form-input" id="capPD" onchange="updateCaptainParentSelect()"><option value="">-</option></select></div></div>
     <div class="form-group"><label>Area / Block Name</label><input type="text" class="form-input" id="capArea" placeholder="e.g., Fig Tree Block A, Main Street"></div>
     <div class="form-group" id="capParentGroup"><label>Reports To (PD Captain)</label><select class="form-input" id="capParent"><option value="">-</option></select></div>
     <div class="form-group"><label>Notes</label><textarea class="form-input" id="capNotes" rows="2"></textarea></div>
@@ -779,7 +789,7 @@
 <div class="modal-overlay" id="householdModal"><div class="modal modal-lg"><div class="modal-header"><h3 class="modal-title" id="hhModalTitle">Add Household</h3><button class="modal-close" onclick="closeModal('householdModal')">×</button></div>
 <div class="modal-body"><input type="hidden" id="editHouseholdId">
     <div class="form-row"><div class="form-group"><label>Household Name *</label><input type="text" class="form-input" id="hhName" placeholder="e.g., Thomas Family"></div><div class="form-group"><label>Head of Household</label><select class="form-input" id="hhHead"><option value="">-</option></select></div></div>
-    <div class="form-row"><div class="form-group"><label>Constituency *</label><select class="form-input" id="hhConst" onchange="updateHHPDSelect()"></select></div><div class="form-group"><label>Polling Division</label><select class="form-input" id="hhPD"><option value="">-</option></select></div></div>
+    <div class="form-row"><div class="form-group"><label>Constituency *</label><select class="form-input" id="hhConst" onchange="updateHHPDSelect()"></select></div><div class="form-group"><label>Polling Station</label><select class="form-input" id="hhPD"><option value="">-</option></select></div></div>
     <div class="form-group"><label>Address</label><input type="text" class="form-input" id="hhAddress"></div>
     <div class="form-group"><label>Notes</label><textarea class="form-input" id="hhNotes" rows="2"></textarea></div>
     <div id="hhMembersSection" style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">
@@ -834,7 +844,7 @@
 <div id="toastContainer" class="toast-container"></div>
 <script>
 // ===== CONFIG & STATE =====
-const AS={currentUser:null,currentView:'dashboard',islandFilter:'all',charts:{},shiftWeekOffset:0};
+const AS={currentUser:null,currentView:'dashboard',islandFilter:(localStorage.getItem('islandScope')||'all'),charts:{},shiftWeekOffset:0};
 let SB=null; // Supabase client
 let SB_ADMIN=null; // Admin client (service role)
 let CONSTITUENCIES=[{id:'C1',name:'St. Christopher 1',island:'st-kitts'},{id:'C2',name:'St. Christopher 2',island:'st-kitts'},{id:'C3',name:'St. Christopher 3',island:'st-kitts'},{id:'C4',name:'St. Christopher 4',island:'st-kitts'},{id:'C5',name:'St. Christopher 5',island:'st-kitts'},{id:'C6',name:'St. Christopher 6',island:'st-kitts'},{id:'C7',name:'St. Christopher 7',island:'st-kitts'},{id:'C8',name:'St. Christopher 8',island:'st-kitts'},{id:'C9',name:'Nevis 9',island:'nevis'},{id:'C10',name:'Nevis 10',island:'nevis'},{id:'C11',name:'Nevis 11',island:'nevis'}];
@@ -1070,6 +1080,12 @@ function closeModal(id){document.getElementById(id).classList.remove('active')}
 function getC(id){return CONSTITUENCIES.find(c=>c.id===id)}
 function getPD(id){return PDS.find(p=>p.id===id)}
 function getPDsFor(cId){return PDS.filter(p=>p.constituencyId===cId)}
+// ===== ISLAND SCOPE HELPERS =====
+function scopedPDs(){return AS.islandFilter==='all'?PDS:PDS.filter(p=>p.island===AS.islandFilter)}
+function constIslandOf(cId){const c=getC(cId);return c?c.island:null}
+function inScope(island){return AS.islandFilter==='all'||island===AS.islandFilter}
+function inScopeByConst(cId){return AS.islandFilter==='all'||constIslandOf(cId)===AS.islandFilter}
+function islandLabel(){return AS.islandFilter==='st-kitts'?'St. Kitts':AS.islandFilter==='nevis'?'Nevis':'Both Islands'}
 function filteredConsts(){return AS.islandFilter==='all'?CONSTITUENCIES:CONSTITUENCIES.filter(c=>c.island===AS.islandFilter)}
 function filteredVoters(d){return AS.islandFilter==='all'?d.voters:d.voters.filter(v=>v.island===AS.islandFilter)}
 function isUpgrade(o,n){const ord={Lost:0,Reachable:1,Soft:2,Solid:3};return(ord[n]||0)>(ord[o]||0)}
@@ -1435,10 +1451,33 @@ async function handleSetup(e){
 }
 
 // ===== NAV =====
-function showView(v){document.querySelectorAll('.view').forEach(el=>el.classList.add('hidden'));const el=document.getElementById(v+'View');if(el){el.classList.remove('hidden');AS.currentView=v;document.querySelectorAll('.nav-item').forEach(i=>i.classList.toggle('active',i.dataset.view===v));const t={dashboard:'Dashboard',analytics:'Analytics',command:'Command Center',islands:'Island Management',constituencies:'Constituencies',voters:'Voter Database',contacts:'Contact Tracking',comms:'Communication Hub',canvassing:'Canvassing',gotv:'GOTV Tracking',captains:'Cell Captains',gotvRace:'GOTV Race',checkin:'Rapid Check-in',queue:'Contact Queue',dispatch:'Transportation',watchers:'Poll Watchers',incidents:'Incidents',results:'Results Tracking',volunteers:'Volunteers',shifts:'Shift Schedule',tasks:'Tasks',donations:'Donations',stations:'Polling Stations',households:'Households',casework:'Constituent Service',influencers:'Community Leaders',pdsManage:'Polling Divisions',users:'Users',export:'Export/Import',activity:'Activity Log'};document.getElementById('viewTitle').textContent=t[v]||v;document.querySelectorAll('.mobile-quicknav button[data-qnav]').forEach(b=>b.classList.toggle('active',b.dataset.qnav===v));refreshView(v);closeMobileSidebar();setTimeout(()=>{try{window.dispatchEvent(new Event('resize'))}catch(e){}},100)}}
+function showView(v){document.querySelectorAll('.view').forEach(el=>el.classList.add('hidden'));const el=document.getElementById(v+'View');if(el){el.classList.remove('hidden');AS.currentView=v;document.querySelectorAll('.nav-item').forEach(i=>i.classList.toggle('active',i.dataset.view===v));const t={dashboard:'Dashboard',analytics:'Analytics',command:'Command Center',islands:'Island Management',constituencies:'Constituencies',voters:'Voter Database',contacts:'Contact Tracking',comms:'Communication Hub',canvassing:'Canvassing',gotv:'GOTV Tracking',captains:'Cell Captains',gotvRace:'GOTV Race',checkin:'Rapid Check-in',queue:'Contact Queue',dispatch:'Transportation',watchers:'Poll Watchers',incidents:'Incidents',results:'Results Tracking',volunteers:'Volunteers',shifts:'Shift Schedule',tasks:'Tasks',donations:'Donations',stations:'Voting Centers',households:'Households',casework:'Constituent Service',influencers:'Community Leaders',pdsManage:'Polling Stations',users:'Users',export:'Export/Import',activity:'Activity Log'};document.getElementById('viewTitle').textContent=t[v]||v;document.querySelectorAll('.mobile-quicknav button[data-qnav]').forEach(b=>b.classList.toggle('active',b.dataset.qnav===v));updateScopeBanner();refreshView(v);closeMobileSidebar();setTimeout(()=>{try{window.dispatchEvent(new Event('resize'))}catch(e){}},100)}}
 function refreshView(v){const m={dashboard:renderDashboard,analytics:renderAnalytics,command:renderCC,islands:renderIslands,constituencies:renderConsts,voters:renderVoters,contacts:renderContacts,comms:renderComms,canvassing:renderCanvassing,gotv:renderGOTV,captains:renderCaptains,gotvRace:renderGOTVRace,checkin:renderCheckin,queue:renderQueue,dispatch:renderDispatch,watchers:renderWatchers,incidents:renderIncidents,results:renderResults,volunteers:renderVols,shifts:renderShifts,tasks:renderTasks,donations:renderDonations,stations:renderStations,households:renderHouseholds,casework:renderCasework,influencers:renderInfluencers,pdsManage:renderPDsManage,users:renderUsers,activity:renderActivity};if(m[v])m[v]()}
-function setIslandFilter(i){AS.islandFilter=i;document.querySelectorAll('.island-btn').forEach(b=>b.classList.toggle('active',b.dataset.island===i));refreshView(AS.currentView)}
-function popConstDropdowns(){const fc=filteredConsts(),o='<option value="">All Const</option>'+fc.map(c=>'<option value="'+c.id+'">'+c.id+'</option>').join('');['voterConstFilter','gotvConstFilter','queueConstFilter','dashConstFilter','walkConst'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=o});document.getElementById('voterConst').innerHTML='<option value="">Select...</option>'+CONSTITUENCIES.map(c=>'<option value="'+c.id+'">'+c.id+' - '+c.name+'</option>').join('')}
+function setIslandFilter(i){
+    AS.islandFilter=i;
+    localStorage.setItem('islandScope',i);
+    document.querySelectorAll('.island-btn').forEach(b=>b.classList.toggle('active',b.dataset.island===i));
+    updateScopeBanner();
+    popConstDropdowns();
+    refreshView(AS.currentView);
+    toast('Now showing: '+islandLabel(),'info');
+}
+function updateScopeBanner(){
+    let banner=document.getElementById('scopeBanner');
+    if(!banner){
+        banner=document.createElement('div');
+        banner.id='scopeBanner';
+        banner.style.cssText='display:none;align-items:center;gap:.5rem;padding:.5rem .875rem;background:var(--primary);color:#fff;font-size:.8125rem;font-weight:500;border-radius:var(--radius-sm);margin-bottom:1rem';
+        const ca=document.querySelector('.content-area');
+        if(ca)ca.insertBefore(banner,ca.firstChild.nextSibling);
+    }
+    if(AS.islandFilter==='all'){banner.style.display='none'}
+    else{
+        banner.style.display='flex';
+        banner.innerHTML=(AS.islandFilter==='nevis'?'🌴':'🏝️')+' <span>Viewing <strong>'+islandLabel()+'</strong> only — all other-island data is hidden.</span> <button onclick="setIslandFilter(\'all\')" style="margin-left:auto;background:rgba(255,255,255,.2);border:none;color:#fff;padding:.25rem .625rem;border-radius:4px;cursor:pointer;font-size:.75rem">Show Both</button>';
+    }
+}
+function popConstDropdowns(){const fc=filteredConsts(),o='<option value="">All Const</option>'+fc.map(c=>'<option value="'+c.id+'">'+c.id+'</option>').join('');['voterConstFilter','gotvConstFilter','queueConstFilter','dashConstFilter','walkConst'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=o});const vc=document.getElementById('voterConst');if(vc)vc.innerHTML='<option value="">Select...</option>'+fc.map(c=>'<option value="'+c.id+'">'+c.id+' - '+c.name+'</option>').join('')}
 function updatePDFilter(){const c=document.getElementById('voterConstFilter').value;document.getElementById('voterPDFilter').innerHTML='<option value="">All PDs</option>'+(c?getPDsFor(c).map(p=>'<option value="'+p.id+'">'+p.code+'</option>').join(''):'')}
 function updateGotvPDFilter(){const c=document.getElementById('gotvConstFilter').value;document.getElementById('gotvPDFilter').innerHTML='<option value="">All PDs</option>'+(c?getPDsFor(c).map(p=>'<option value="'+p.id+'">'+p.code+'</option>').join(''):'')}
 function updateVoterPDSelect(){const c=document.getElementById('voterConst').value;document.getElementById('voterPD').innerHTML=c?'<option value="">Select PD...</option>'+getPDsFor(c).map(p=>'<option value="'+p.id+'">'+p.code+'</option>').join(''):'<option value="">Select const first</option>'}
@@ -1456,7 +1495,21 @@ function updateClock(){document.getElementById('electionClock').textContent=new 
 function renderHourlyChart(){const ctx=document.getElementById('hourlyChart');if(!ctx)return;if(AS.charts.hr)AS.charts.hr.destroy();const d=getData(),hrs=['6AM','7AM','8AM','9AM','10AM','11AM','12PM','1PM','2PM','3PM','4PM','5PM','6PM'],data=hrs.map((h,i)=>d.voters.filter(v=>v.votedTime&&new Date(v.votedTime).getHours()===(6+i)).length);AS.charts.hr=new Chart(ctx,{type:'bar',data:{labels:hrs,datasets:[{label:'Votes',data,backgroundColor:'#059669'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}})}
 
 // ISLANDS
-function renderIslands(){const d=getData(),kv=d.voters.filter(v=>v.island==='st-kitts'),nv=d.voters.filter(v=>v.island==='nevis');document.getElementById('kittsVoters').textContent=kv.length;document.getElementById('kittsSupporters').textContent=kv.filter(v=>v.category==='Solid'||v.category==='Soft').length;document.getElementById('nevisVoters').textContent=nv.length;document.getElementById('nevisSupporters').textContent=nv.filter(v=>v.category==='Solid'||v.category==='Soft').length;document.getElementById('kittsCard').classList.toggle('active',AS.islandFilter==='st-kitts');document.getElementById('nevisCard').classList.toggle('active',AS.islandFilter==='nevis');renderIslandChart()}
+function renderIslands(){const d=getData(),kv=d.voters.filter(v=>v.island==='st-kitts'),nv=d.voters.filter(v=>v.island==='nevis');
+    document.getElementById('kittsVoters').textContent=kv.length.toLocaleString();
+    document.getElementById('kittsSupporters').textContent=kv.filter(v=>['Strong','Medium','Soft'].includes(v.supportLevel)||['Solid','Soft'].includes(v.category)).length.toLocaleString();
+    document.getElementById('kittsVoted').textContent=kv.filter(v=>v.hasVoted).length.toLocaleString();
+    document.getElementById('nevisVoters').textContent=nv.length.toLocaleString();
+    document.getElementById('nevisSupporters').textContent=nv.filter(v=>['Strong','Medium','Soft'].includes(v.supportLevel)||['Solid','Soft'].includes(v.category)).length.toLocaleString();
+    document.getElementById('nevisVoted').textContent=nv.filter(v=>v.hasVoted).length.toLocaleString();
+    const kc=CONSTITUENCIES.filter(c=>c.island==='st-kitts').length,kp=PDS.filter(p=>p.island==='st-kitts').length;
+    const nc=CONSTITUENCIES.filter(c=>c.island==='nevis').length,np=PDS.filter(p=>p.island==='nevis').length;
+    document.getElementById('kittsGeo').textContent=kc+' Constituencies • '+kp+' Polling Stations';
+    document.getElementById('nevisGeo').textContent=nc+' Constituencies • '+np+' Polling Stations';
+    document.getElementById('kittsCard').classList.toggle('active',AS.islandFilter==='st-kitts');
+    document.getElementById('nevisCard').classList.toggle('active',AS.islandFilter==='nevis');
+    document.querySelectorAll('.island-scope-btn').forEach(b=>{const on=b.dataset.scope===AS.islandFilter;b.classList.toggle('btn-primary',on);b.classList.toggle('btn-outline',!on)});
+    renderIslandChart()}
 function renderIslandChart(){const ctx=document.getElementById('islandCompareChart');if(!ctx)return;if(AS.charts.ic)AS.charts.ic.destroy();const d=getData(),k=d.voters.filter(v=>v.island==='st-kitts'),n=d.voters.filter(v=>v.island==='nevis');AS.charts.ic=new Chart(ctx,{type:'bar',data:{labels:['Solid','Soft','Reachable','Lost'],datasets:[{label:'St. Kitts',data:[k.filter(v=>v.category==='Solid').length,k.filter(v=>v.category==='Soft').length,k.filter(v=>v.category==='Reachable').length,k.filter(v=>v.category==='Lost').length],backgroundColor:'#1e3a5f'},{label:'Nevis',data:[n.filter(v=>v.category==='Solid').length,n.filter(v=>v.category==='Soft').length,n.filter(v=>v.category==='Reachable').length,n.filter(v=>v.category==='Lost').length],backgroundColor:'#059669'}]},options:{responsive:true,maintainAspectRatio:false}})}
 
 // CONSTITUENCIES
@@ -1479,7 +1532,7 @@ function viewVoterDetail(id){
     document.getElementById('voterDetailContent').innerHTML=
         '<div class="grid-2 mb-2"><div><h4 style="font-size:1.25rem">'+v.firstName+' '+v.lastName+'</h4><p class="text-muted" style="font-size:.8125rem">'+v.voterId+(v.dateOfBirth?' • DOB '+fDate(v.dateOfBirth):'')+(v.gender?' • '+v.gender:'')+'</p></div><div style="text-align:right">'+supportBadge(v.supportLevel||v.category)+(v.hasVoted?'<br><span class="badge badge-success mt-2">✓ VOTED</span>':'')+'</div></div>'+
         '<div style="display:flex;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap"><button class="btn btn-sm btn-info" onclick="closeModal(\'voterDetailModal\');openCaseModal(\''+v.id+'\')">📋 Open Case</button>'+(v.phone?'<a href="https://wa.me/'+v.phone.replace(/\D/g,'')+'" target="_blank" class="btn btn-sm btn-success" style="text-decoration:none">💬 WhatsApp</a><a href="tel:'+v.phone+'" class="btn btn-sm btn-outline" style="text-decoration:none">📞 Call</a>':'')+'</div>'+
-        '<div class="grid-2 mb-2" style="font-size:.8125rem"><div><strong>Const:</strong> '+v.constituencyId+'</div><div><strong>PD:</strong> '+(pd?pd.code:'-')+'</div><div><strong>Station:</strong> '+(st?st.name:'-')+'</div><div><strong>Phone:</strong> '+(v.phone||'-')+'</div><div><strong>Email:</strong> '+(v.email||'-')+'</div><div><strong>Occupation:</strong> '+(v.occupation||'-')+'</div><div><strong>Address:</strong> '+(v.address||'-')+'</div><div><strong>Commitment:</strong> '+(v.commitment||'Unknown')+'</div></div>'+
+        '<div class="grid-2 mb-2" style="font-size:.8125rem"><div><strong>Const:</strong> '+v.constituencyId+'</div><div><strong>PD:</strong> '+(pd?pd.code:'-')+'</div><div><strong>Voting Center:</strong> '+(st?st.name:'-')+'</div><div><strong>Phone:</strong> '+(v.phone||'-')+'</div><div><strong>Email:</strong> '+(v.email||'-')+'</div><div><strong>Occupation:</strong> '+(v.occupation||'-')+'</div><div><strong>Address:</strong> '+(v.address||'-')+'</div><div><strong>Commitment:</strong> '+(v.commitment||'Unknown')+'</div></div>'+
         (hh?'<div class="profile-section"><h5>🏠 Household: '+hh.name+(v.householdRole?' ('+v.householdRole+')':'')+'</h5>'+(hhMembers.length?'<div style="display:flex;flex-wrap:wrap;gap:.25rem">'+hhMembers.map(m=>'<span class="badge badge-primary" style="cursor:pointer" onclick="closeModal(\'voterDetailModal\');viewVoterDetail(\''+m.id+'\')">'+m.firstName+' '+m.lastName+' '+supportBadge(m.supportLevel||m.category)+'</span>').join('')+'</div>':'<p class="text-muted" style="font-size:.75rem">No other members</p>')+'</div>':'')+
         (allCases.length?'<div class="profile-section"><h5>📋 Cases ('+openCases.length+' open / '+allCases.length+' total)</h5>'+allCases.slice(0,5).map(c=>{const sc={Open:'warning','In Progress':'info',Resolved:'success',Escalated:'danger',Closed:'neutral'};return '<div style="padding:.5rem;background:var(--card);border-radius:var(--radius-sm);margin-bottom:.25rem;font-size:.75rem;cursor:pointer" onclick="closeModal(\'voterDetailModal\');editCase(\''+c.id+'\')"><strong>'+c.title+'</strong> <span class="badge badge-'+(sc[c.status]||'neutral')+'" style="font-size:.625rem">'+c.status+'</span> <span class="text-muted">'+(c.category||'')+' • '+fDate(c.openedDate)+'</span></div>'}).join('')+'</div>':'')+
         ((v.emotionalState||v.loveLanguage)?'<div class="profile-section"><h5>💭 Emotional Profile</h5>'+(v.emotionalState?'<span class="badge badge-info">'+v.emotionalState+'</span>':'')+(v.loveLanguage?'<span class="badge badge-purple">'+v.loveLanguage+'</span>':'')+'</div>':'')+
@@ -1672,13 +1725,14 @@ function renderStations(){
     const constFilter=document.getElementById('stationConstFilter').value;
     const search=(document.getElementById('stationSearch').value||'').toLowerCase();
     const stations=(CACHE.pollingStations||[]).filter(s=>{
+        if(!inScopeByConst(s.constituencyId))return false;
         if(constFilter&&s.constituencyId!==constFilter)return false;
         if(search&&!(s.name||'').toLowerCase().includes(search)&&!(s.code||'').toLowerCase().includes(search))return false;
         return true;
     }).sort((a,b)=>(a.constituencyId||'').localeCompare(b.constituencyId||'')||(a.name||'').localeCompare(b.name||''));
     const voters=CACHE.voters||[];
     const tb=document.getElementById('stationTableBody');
-    if(!stations.length){tb.innerHTML='<tr><td colspan="8" class="table-empty">No polling stations. Click "+ Add Polling Station" to create one.</td></tr>'}
+    if(!stations.length){tb.innerHTML='<tr><td colspan="8" class="table-empty">No voting centers. Click "+ Add Voting Center" to create one.</td></tr>'}
     else{
         tb.innerHTML=stations.map(s=>{
             const pd=s.pollingDivisionId?getPD(s.pollingDivisionId):null;
@@ -1690,7 +1744,7 @@ function renderStations(){
 }
 
 function openStationModal(){
-    document.getElementById('stationModalTitle').textContent='Add Polling Station';
+    document.getElementById('stationModalTitle').textContent='Add Voting Center';
     ['editStationId','stationName','stationCode','stationAddress','stationCapacity','stationNotes'].forEach(id=>document.getElementById(id).value='');
     const cs=document.getElementById('stationConst');
     cs.innerHTML='<option value="">Select Constituency</option>'+CONSTITUENCIES.map(c=>'<option value="'+c.id+'">'+c.id+' - '+c.name+'</option>').join('');
@@ -1702,7 +1756,7 @@ function openStationModal(){
 function editStation(id){
     const s=(CACHE.pollingStations||[]).find(x=>x.id===id);if(!s)return;
     openStationModal();
-    document.getElementById('stationModalTitle').textContent='Edit Polling Station';
+    document.getElementById('stationModalTitle').textContent='Edit Voting Center';
     document.getElementById('editStationId').value=s.id;
     document.getElementById('stationName').value=s.name||'';
     document.getElementById('stationCode').value=s.code||'';
@@ -2112,6 +2166,127 @@ function generatePrintReport(viewId,title){
 }
 
 
+// ===== DEMO DATA POPULATION =====
+function _rand(arr){return arr[Math.floor(Math.random()*arr.length)]}
+function _sample(arr,n){const a=arr.slice();const out=[];for(let i=0;i<n&&a.length;i++){out.push(a.splice(Math.floor(Math.random()*a.length),1)[0])}return out}
+
+async function populateProfiles(){
+    if(!PDS.length){toast('No polling stations found','error');return}
+    const voters=CACHE.voters||[];
+    if(!voters.length){toast('No voters to profile','error');return}
+    // 28.5% per PD
+    let targets=[];
+    PDS.forEach(pd=>{
+        const pv=voters.filter(v=>v.pollingDivisionId===pd.id);
+        const n=Math.round(pv.length*0.285);
+        targets=targets.concat(_sample(pv,n));
+    });
+    if(!targets.length){toast('No voters matched','error');return}
+    if(!confirm('Populate full EI profiles for '+targets.length.toLocaleString()+' voters (28.5% of each polling station)? This fills emotional state, love language, tribes, comm styles, trigger issue, conversion strategy, DOB, gender, occupation.'))return;
+    updateSyncStatus('syncing');toast('Building profiles for '+targets.length+' voters...','info');
+    const occupations=['Teacher','Fisherman','Farmer','Nurse','Civil Servant','Shopkeeper','Construction Worker','Hotel Worker','Taxi Driver','Mechanic','Electrician','Hairdresser','Security Guard','Accountant','Chef','Vendor','Pastor','Retired','Student','Self-Employed','Customs Officer','Police Officer','Bank Teller','Cleaner','Plumber'];
+    const triggers=['Grandson unemployed','Road needs repair','Water supply unreliable','Pension delayed','Needs housing assistance','Son needs scholarship','Land dispute','High electricity bills','Health clinic too far','Wants small business loan','Street lights broken','Concerned about crime','Daughter seeking job','Drainage flooding','Needs NIS help'];
+    const strategies=['Listening session + youth opportunity linkage','Personal visit from candidate','Connect to constituency office for casework','Invite to community meeting','Follow-up call + literature drop','Link to job training program','Resolve outstanding service issue','Church leader introduction','WhatsApp engagement + voice notes','Home visit with local rep'];
+    const genders=['Male','Female'];
+    const rows=targets.map(v=>{
+        const tribes=_sample(CORE_TRIBES,1+Math.floor(Math.random()*2));
+        const comms=_sample(COMM_STYLES,1+Math.floor(Math.random()*2));
+        const yr=1945+Math.floor(Math.random()*60);const mo=1+Math.floor(Math.random()*12);const dy=1+Math.floor(Math.random()*28);
+        return {
+            id:v.id,
+            emotional_state:_rand(EMOTIONAL_STATES),
+            love_language:_rand(LOVE_LANGUAGES),
+            core_tribes:tribes.join(', '),
+            comm_styles:comms.join(', '),
+            trigger_issue:_rand(triggers),
+            conversion_strategy:_rand(strategies),
+            date_of_birth:yr+'-'+String(mo).padStart(2,'0')+'-'+String(dy).padStart(2,'0'),
+            gender:_rand(genders),
+            occupation:_rand(occupations),
+            email:v.email||(v.firstName+'.'+v.lastName+Math.floor(Math.random()*99)+'@email.kn').toLowerCase()
+        };
+    });
+    let done=0;
+    for(let i=0;i<rows.length;i+=100){
+        const batch=rows.slice(i,i+100);
+        const{error}=await SB.from('voters').upsert(batch);
+        if(error){console.error(error);toast('Batch failed: '+error.message,'error')}else{done+=batch.length}
+    }
+    await loadAllData();refreshView(AS.currentView);
+    addActivity('populated profiles for '+done+' voters','👤');
+    toast('Profiled '+done.toLocaleString()+' voters','success');
+}
+
+async function populateCasework(){
+    if(!PDS.length){toast('No polling stations found','error');return}
+    const voters=CACHE.voters||[];
+    if(!voters.length){toast('No voters found','error');return}
+    let targets=[];
+    PDS.forEach(pd=>{
+        const pv=voters.filter(v=>v.pollingDivisionId===pd.id);
+        const n=Math.round(pv.length*0.10);
+        targets=targets.concat(_sample(pv,n));
+    });
+    if(!targets.length){toast('No voters matched','error');return}
+    if(!confirm('Generate '+targets.length.toLocaleString()+' constituent-service cases (10% of each polling station) with realistic issues, statuses, and outcomes for analysis/demo?'))return;
+    updateSyncStatus('syncing');toast('Generating '+targets.length+' cases...','info');
+    const cats=['Passport/Documents','NIS/Benefits','Housing','Employment','Water','Electricity','Roads/Infrastructure','Scholarship/Education','Healthcare','Immigration','Legal/Court','Welfare','Business/Licensing','Agriculture','Other'];
+    const titlesByCat={
+        'Passport/Documents':['Passport renewal delayed','Birth certificate request','ID card replacement'],
+        'NIS/Benefits':['NIS pension not received','Benefit application stuck','NIS contribution query'],
+        'Housing':['Needs housing assistance','Roof repair request','Land title issue'],
+        'Employment':['Seeking job placement','Wrongful dismissal help','Work permit assistance'],
+        'Water':['Water supply intermittent','High water bill dispute','New water connection'],
+        'Electricity':['Frequent power outages','Electricity bill dispute','New service connection'],
+        'Roads/Infrastructure':['Road needs paving','Street light not working','Drainage flooding'],
+        'Scholarship/Education':['Scholarship application','School transfer request','Tuition assistance'],
+        'Healthcare':['Medical referral needed','Clinic access issue','Medication assistance'],
+        'Immigration':['Family visa query','Residency application','Work permit renewal'],
+        'Legal/Court':['Legal aid request','Court date assistance','Document notarization'],
+        'Welfare':['Public assistance request','Food support needed','Elderly care help'],
+        'Business/Licensing':['Business license renewal','Vendor permit request','Trade license query'],
+        'Agriculture':['Farming subsidy request','Land lease assistance','Crop damage claim'],
+        'Other':['General inquiry','Community request','Follow-up needed']
+    };
+    const priorities=['Low','Medium','Medium','High','High','Urgent'];
+    const statuses=['Open','Open','In Progress','In Progress','Resolved','Resolved','Resolved','Escalated','Closed'];
+    const outcomes={Resolved:['Issue resolved successfully','Referred and completed','Service restored','Application approved'],Closed:['Closed — resolved','Closed — no further action'],Escalated:['Escalated to ministry','Escalated to senior official'],Open:[''],'In Progress':['Awaiting response from agency','Follow-up scheduled']};
+    const staff=(CACHE.users||[]);
+    const rows=targets.map(v=>{
+        const cat=_rand(cats);
+        const status=_rand(statuses);
+        const opened=new Date(Date.now()-Math.floor(Math.random()*120)*864e5);
+        const resolved=(status==='Resolved'||status==='Closed')?new Date(opened.getTime()+Math.floor(Math.random()*30+1)*864e5):null;
+        const assignee=staff.length&&Math.random()<0.7?_rand(staff):null;
+        return {
+            id:genId(),
+            voter_id:v.id,
+            title:_rand(titlesByCat[cat]),
+            category:cat,
+            description:'Constituent reported: '+_rand(titlesByCat[cat]).toLowerCase()+'. Logged for follow-up.',
+            priority:_rand(priorities),
+            status:status,
+            assigned_to:assignee?assignee.id:null,
+            constituency_id:v.constituencyId,
+            opened_date:opened.toISOString().split('T')[0],
+            resolved_date:resolved?resolved.toISOString().split('T')[0]:null,
+            outcome:(outcomes[status]?_rand(outcomes[status]):'')||null,
+            notes:null,
+            created_at:opened.toISOString()
+        };
+    });
+    let done=0;
+    for(let i=0;i<rows.length;i+=100){
+        const batch=rows.slice(i,i+100);
+        const{error}=await SB.from('casework').insert(batch);
+        if(error){console.error(error);toast('Batch failed: '+error.message,'error')}else{done+=batch.length}
+    }
+    await loadAllData();refreshView(AS.currentView);
+    addActivity('generated '+done+' casework cases','📋');
+    toast('Created '+done.toLocaleString()+' cases','success');
+}
+
+
 // ===== CELL CAPTAINS =====
 function renderCaptains(){
     const cf=document.getElementById('capConstFilter');
@@ -2119,7 +2294,7 @@ function renderCaptains(){
     const constFilter=document.getElementById('capConstFilter').value;
     const levelFilter=document.getElementById('capLevelFilter').value;
     const search=(document.getElementById('capSearch').value||'').toLowerCase();
-    const all=(CACHE.captains||[]);
+    const all=(CACHE.captains||[]).filter(c=>inScopeByConst(c.constituencyId));
     const filtered=all.filter(c=>{
         if(constFilter&&c.constituencyId!==constFilter)return false;
         if(levelFilter&&c.level!==levelFilter)return false;
@@ -2282,13 +2457,13 @@ function deleteCaptain(){
 function renderGOTVRace(){
     const voters=CACHE.voters||[];
     // Per-PD turnout
-    const pdStats=PDS.map(pd=>{
+    const pdStats=scopedPDs().map(pd=>{
         const pv=voters.filter(v=>v.pollingDivisionId===pd.id);
         const voted=pv.filter(v=>v.hasVoted).length;
         return {pd:pd,total:pv.length,voted:voted,pct:pv.length?Math.round(voted/pv.length*100):0};
     }).filter(s=>s.total>0).sort((a,b)=>b.pct-a.pct||b.voted-a.voted);
     // Per-constituency turnout
-    const constStats=CONSTITUENCIES.map(c=>{
+    const constStats=filteredConsts().map(c=>{
         const cv=voters.filter(v=>v.constituencyId===c.id);
         const voted=cv.filter(v=>v.hasVoted).length;
         return {c:c,total:cv.length,voted:voted,pct:cv.length?Math.round(voted/cv.length*100):0};
@@ -2759,13 +2934,13 @@ function renderConsts(){
     const grid=document.getElementById('fullConstituencyGrid');
     if(!grid)return;
     const voters=CACHE.voters||[];
-    grid.innerHTML=CONSTITUENCIES.map(c=>{
+    grid.innerHTML=filteredConsts().map(c=>{
         const cv=voters.filter(v=>v.constituencyId===c.id);
         const pds=PDS.filter(p=>p.constituencyId===c.id);
         const supp=cv.filter(v=>(v.supportLevel==='Strong'||v.category==='Solid')||(v.supportLevel==='Soft'||v.category==='Soft')||v.supportLevel==='Medium').length;
         return '<div class="constituency-card" onclick="editConstituency(\''+c.id+'\')"><h4>'+c.id+' — '+c.name+'</h4><p class="text-muted" style="font-size:.75rem;margin-bottom:.5rem">'+(c.island==='nevis'?'🏝️ Nevis':'🏝️ St. Kitts')+' • '+pds.length+' PDs</p><div style="display:flex;justify-content:space-between;font-size:.75rem"><span><strong>'+cv.length+'</strong> voters</span><span class="text-success"><strong>'+supp+'</strong> supporters</span></div></div>';
     }).join('');
-    if(!CONSTITUENCIES.length)grid.innerHTML='<p class="text-muted">No constituencies. Click + Add to create.</p>';
+    if(!filteredConsts().length)grid.innerHTML='<p class="text-muted">No constituencies. Click + Add to create.</p>';
 }
 function openConstModal(){
     document.getElementById('constModalTitle').textContent='Add Constituency';
@@ -2822,7 +2997,7 @@ function renderPDsManage(){
     populatePDsFilters();
     const constFilter=document.getElementById('pdsConstFilter').value;
     const search=(document.getElementById('pdsSearch').value||'').toLowerCase();
-    const filtered=PDS.filter(p=>{
+    const filtered=scopedPDs().filter(p=>{
         if(constFilter&&p.constituencyId!==constFilter)return false;
         if(search&&!(p.name||'').toLowerCase().includes(search)&&!(p.code||'').toLowerCase().includes(search)&&!(p.areaDescription||'').toLowerCase().includes(search))return false;
         return true;
@@ -2833,7 +3008,7 @@ function renderPDsManage(){
     else{
         tb.innerHTML=filtered.map(p=>{
             const vc=voters.filter(v=>v.pollingDivisionId===p.id).length;
-            return '<tr><td><strong>'+p.code+'</strong></td><td>'+p.name+'</td><td>'+p.constituencyId+'</td><td>'+(p.island==='nevis'?'Nevis':'St. Kitts')+'</td><td style="font-size:.75rem;color:var(--text-muted)">'+(p.areaDescription||'-')+'</td><td><span class="badge badge-info">'+vc+'</span></td><td><button class="btn btn-xs btn-outline" onclick="editPD(\''+p.id+'\')">Edit</button></td></tr>';
+            return '<tr><td><strong title="'+(p.areaDescription||p.name||'').replace(/"/g,'&quot;')+'" style="cursor:help;border-bottom:1px dotted var(--text-muted)">'+p.code+'</strong></td><td>'+p.name+'</td><td>'+p.constituencyId+'</td><td>'+(p.island==='nevis'?'Nevis':'St. Kitts')+'</td><td style="font-size:.75rem;color:var(--text-muted)">'+(p.areaDescription||'-')+'</td><td><span class="badge badge-info">'+vc+'</span></td><td><button class="btn btn-xs btn-outline" onclick="editPD(\''+p.id+'\')">Edit</button></td></tr>';
         }).join('');
     }
     document.getElementById('pdsCount').textContent=filtered.length+' polling division'+(filtered.length===1?'':'s');
@@ -2843,7 +3018,7 @@ function populatePDsFilters(){
     if(sel&&sel.children.length<=1)sel.innerHTML='<option value="">All Constituencies</option>'+CONSTITUENCIES.map(c=>'<option value="'+c.id+'">'+c.id+' - '+c.name+'</option>').join('');
 }
 function openPDModal(){
-    document.getElementById('pdModalTitle').textContent='Add Polling Division';
+    document.getElementById('pdModalTitle').textContent='Add Polling Station';
     ['editPDId','pdId','pdCode','pdName','pdArea','pdSortOrder'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('pdConst').innerHTML=CONSTITUENCIES.map(c=>'<option value="'+c.id+'">'+c.id+' - '+c.name+'</option>').join('');
     document.getElementById('deletePDBtn').classList.add('hidden');
@@ -2853,7 +3028,7 @@ function openPDModal(){
 function editPD(id){
     const p=PDS.find(x=>x.id===id);if(!p)return;
     openPDModal();
-    document.getElementById('pdModalTitle').textContent='Edit Polling Division';
+    document.getElementById('pdModalTitle').textContent='Edit Polling Station';
     document.getElementById('editPDId').value=p.id;
     document.getElementById('pdId').value=p.id;
     document.getElementById('pdId').disabled=true;
@@ -2978,6 +3153,7 @@ function renderHouseholds(){
     const pdFilter=pdSel.value;
     const search=(document.getElementById('hhSearch').value||'').toLowerCase();
     const households=(CACHE.households||[]).filter(h=>{
+        if(!inScopeByConst(h.constituencyId))return false;
         if(constFilter&&h.constituencyId!==constFilter)return false;
         if(pdFilter&&h.pollingDivisionId!==pdFilter)return false;
         if(search&&!(h.name||'').toLowerCase().includes(search)&&!(h.address||'').toLowerCase().includes(search))return false;
@@ -3139,7 +3315,7 @@ function logHouseholdVisit(){
 // ===== CASEWORK =====
 function renderCasework(){
     populateCaseFilters();
-    const cases=(CACHE.casework||[]);
+    const cases=(CACHE.casework||[]).filter(c=>inScopeByConst(c.constituencyId));
     const sf=document.getElementById('caseStatusFilter').value;
     const pf=document.getElementById('casePriorityFilter').value;
     const cf=document.getElementById('caseCategoryFilter').value;
@@ -3269,7 +3445,7 @@ function deleteCase(){
 // ===== INFLUENCERS =====
 function renderInfluencers(){
     populateInfFilters();
-    const all=(CACHE.influencers||[]);
+    const all=(CACHE.influencers||[]).filter(i=>AS.islandFilter==='all'||constIslandOf(i.constituencyId)===AS.islandFilter);
     const cf=document.getElementById('infCatFilter').value;
     const sf=document.getElementById('infStanceFilter').value;
     const conF=document.getElementById('infConstFilter').value;
@@ -3374,7 +3550,7 @@ function deleteInfluencer(){
 
 
 // ===== INITIALIZATION =====
-function initApp(){popConstDropdowns();showView('dashboard');setInterval(updateClock,1000);setupOfflineHandling();replayOfflineQueue()}
+function initApp(){document.querySelectorAll('.island-btn').forEach(b=>b.classList.toggle('active',b.dataset.island===AS.islandFilter));popConstDropdowns();showView('dashboard');updateScopeBanner();setInterval(updateClock,1000);setupOfflineHandling();replayOfflineQueue()}
 
 // Boot sequence
 document.getElementById('setupForm').addEventListener('submit',handleSetup);
