@@ -305,7 +305,7 @@ body.no-export .requires-export{display:none!important}
         <div class="btn-group"><button class="btn btn-sm btn-outline" onclick="exportAnalyticsReport()">🖨️ Export Full Report</button></div>
     </div>
     <div class="filter-bar">
-        <select class="form-input" id="anConstFilter" onchange="renderAnalytics()"><option value="">All Constituencies</option></select>
+        <select class="form-input" id="anConstFilter" onchange="syncAnIslandFromConst();renderAnalytics()"><option value="">All Constituencies</option></select>
         <select class="form-input" id="anIslandFilter" onchange="renderAnalytics()"><option value="">Both Islands</option><option value="st-kitts">St. Kitts</option><option value="nevis">Nevis</option></select>
     </div>
     <div class="stats-grid" id="anKPIs"></div>
@@ -2464,6 +2464,13 @@ function renderDashPDs(){const d=getData(),cf=document.getElementById('dashConst
 function showConstVoters(c){document.getElementById('voterConstFilter').value=c;updatePDFilter();showView('voters')}
 
 // ===== ANALYTICS STUDIO =====
+function syncAnIslandFromConst(){
+    const cf=document.getElementById('anConstFilter')?.value||'';
+    const islSel=document.getElementById('anIslandFilter');
+    if(!cf||!islSel)return;
+    const c=getC(cf);
+    if(c&&c.island)islSel.value=c.island;
+}
 function anFiltered(){
     const d=getData();
     const cf=document.getElementById('anConstFilter')?.value||'';
