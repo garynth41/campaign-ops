@@ -122,6 +122,9 @@
             .app-container.active .toast-container{bottom:72px}
         }
         @media print{.mobile-quicknav{display:none!important}}
+/* RBAC: hide sensitive controls for restricted roles */
+body.no-delete-voters .requires-delete-voters{display:none!important}
+body.no-export .requires-export{display:none!important}
     </style>
 </head>
 <body>
@@ -220,6 +223,8 @@
             <div class="nav-item" data-view="gotv"><span class="nav-icon">✅</span> GOTV Tracking</div>
             <div class="nav-item" data-view="captains"><span class="nav-icon">👥</span> Cell Captains</div>
             <div class="nav-item" data-view="gotvRace"><span class="nav-icon">🏁</span> GOTV Race</div>
+            <div class="nav-item" data-view="overseas"><span class="nav-icon">✈️</span> Overseas Voters</div>
+            <div class="nav-item" data-view="targetlists"><span class="nav-icon">🎯</span> Target Lists</div>
             <div class="nav-item" data-view="checkin"><span class="nav-icon">⚡</span> Rapid Check-in</div>
             <div class="nav-item" data-view="queue"><span class="nav-icon">📋</span> Contact Queue</div>
             <div class="nav-item" data-view="dispatch"><span class="nav-icon">🚗</span> Transportation</div>
@@ -289,6 +294,7 @@
         <div class="card"><div class="card-header">Contact Activity (30 Days)</div><div class="card-body"><div id="dashContactTrend" style="height:260px"></div></div></div>
         <div class="card"><div class="card-header">GOTV Funnel</div><div class="card-body"><div id="dashFunnel" style="height:260px"></div></div></div>
     </div>
+    <div class="card mb-3" id="dashOverseasCard" style="display:none"><div class="card-header"><span>✈️ Overseas Return Pipeline</span><button class="btn btn-xs btn-outline" onclick="showView('overseas')">Open Diaspora View →</button></div><div class="card-body"><div id="dashOverseasPipeline"></div></div></div>
     <div class="card"><div class="card-header"><span>PD Summary</span><select class="form-input" id="dashConstFilter" onchange="renderDashPDs()" style="width:180px"><option value="">All Const</option></select></div><div class="card-body"><div class="table-container"><table><thead><tr><th>PD</th><th>Const</th><th>Voters</th><th>Strong</th><th>Soft</th><th>Contacted</th><th>Voted</th><th>Support%</th></tr></thead><tbody id="pdSummaryTable"></tbody></table></div></div></div>
 </div>
 
@@ -319,6 +325,7 @@
         <div class="card"><div class="card-header">Support by PD (Heatmap)</div><div class="card-body"><div id="anHeatmap" style="height:340px"></div></div></div>
         <div class="card"><div class="card-header">Casework by Category</div><div class="card-body"><div id="anCasework" style="height:340px"></div></div></div>
     </div>
+    <div class="card mb-3"><div class="card-header"><span>📈 Support Sentiment Trends (recorded changes over time)</span><button class="btn btn-xs btn-outline requires-export" onclick="exportAllSupportHistory()">📤 Export History</button></div><div class="card-body"><div id="anSupportTrend" style="height:300px"></div></div></div>
     <div class="card"><div class="card-header">Constituency Performance</div><div class="card-body"><div class="table-container"><table><thead><tr><th>Constituency</th><th>Voters</th><th>Strong</th><th>Soft</th><th>Support%</th><th>Contacted%</th><th>Voted</th></tr></thead><tbody id="constPerfTable"></tbody></table></div></div></div>
 </div>
 
@@ -430,7 +437,7 @@
 <!-- VOTERS -->
 <div class="view hidden" id="votersView">
     <div class="page-header"><h3>Voter Database</h3><div class="btn-group"><span class="text-muted" id="voterCount">0</span><button class="btn btn-primary" onclick="openAddVoter()">+ Add Voter</button></div></div>
-    <div class="filter-bar"><input type="text" class="form-input" id="voterSearch" placeholder="Search name/ID..." oninput="filterVoters()"><select class="form-input" id="voterConstFilter" onchange="updatePDFilter();filterVoters()"><option value="">All Const</option></select><select class="form-input" id="voterPDFilter" onchange="filterVoters()"><option value="">All PDs</option></select><select class="form-input" id="voterCatFilter" onchange="filterVoters()"><option value="">All Categories</option><option value="Solid">Solid</option><option value="Soft">Soft</option><option value="Reachable">Reachable</option><option value="Lost">Lost</option></select></div>
+    <div class="filter-bar"><input type="text" class="form-input" id="voterSearch" placeholder="Search name/ID..." oninput="filterVoters()"><select class="form-input" id="voterConstFilter" onchange="updatePDFilter();filterVoters()"><option value="">All Const</option></select><select class="form-input" id="voterPDFilter" onchange="filterVoters()"><option value="">All PDs</option></select><select class="form-input" id="voterCatFilter" onchange="filterVoters()"><option value="">All Categories</option><option value="Solid">Solid</option><option value="Soft">Soft</option><option value="Reachable">Reachable</option><option value="Lost">Lost</option></select><select class="form-input" id="voterClassFilter" onchange="filterVoters()"><option value="">All Voters</option><option value="overseas">✈️ Overseas only</option><option value="outside">🏘️ Lives Outside Const.</option><option value="resident">🏠 Lives In Const.</option></select></div>
     <div class="card"><div class="table-container"><table><thead><tr><th>Name</th><th>Voter ID</th><th>Const</th><th>PD</th><th>Category</th><th>Phone</th><th>Contacts</th><th>Actions</th></tr></thead><tbody id="voterTableBody"></tbody></table></div></div>
 </div>
 
@@ -465,7 +472,10 @@
                 <h5 style="font-size:.8125rem;margin-bottom:.5rem">2. Target Segment</h5>
                 <div class="form-row"><div class="form-group"><label>Support Level</label><select class="form-input" id="segSupport"><option value="">Any</option><option>Strong</option><option>Medium</option><option>Soft</option><option>Undecided</option><option>Opposition</option><option>Unknown</option></select></div><div class="form-group"><label>Constituency</label><select class="form-input" id="segConst" onchange="updateSegPD()"><option value="">Any</option></select></div></div>
                 <div class="form-row"><div class="form-group"><label>Polling Station</label><select class="form-input" id="segPD"><option value="">Any</option></select></div><div class="form-group"><label>Commitment</label><select class="form-input" id="segCommitment"><option value="">Any</option><option>Definite</option><option>Likely</option><option>Maybe</option><option>Unlikely</option></select></div></div>
-                <div class="form-row"><div class="form-group"><label>Core Tribe</label><select class="form-input" id="segTribe"><option value="">Any</option></select></div><div class="form-group"><label>Status</label><select class="form-input" id="segStatus"><option value="">Any</option><option value="not-voted">Not Yet Voted</option><option value="needs-ride">Needs Ride</option><option value="never-contacted">Never Contacted</option></select></div></div>
+                <div class="form-row"><div class="form-group"><label>Core Tribe</label><select class="form-input" id="segTribe"><option value="">Any</option></select></div><div class="form-group"><label>Emotional Bloc <span class="text-muted" style="font-size:.6875rem">(persona)</span></label><select class="form-input" id="segBloc" onchange="suggestBlocTone()"><option value="">Any</option><option>The Loyalists</option><option>The Forgotten</option><option>The Aspirers</option><option>The Protectors</option><option>The Survivors</option><option>The Skeptics</option><option>The Caregivers</option><option>The Builders</option></select></div></div>
+                <div class="form-row"><div class="form-group"><label>Status</label><select class="form-input" id="segStatus"><option value="">Any</option><option value="not-voted">Not Yet Voted</option><option value="needs-ride">Needs Ride</option><option value="never-contacted">Never Contacted</option><option value="overseas">Overseas (all)</option><option value="overseas-confirmed">Overseas — Confirmed Returning</option><option value="overseas-unconfirmed">Overseas — Not Yet Confirmed</option><option value="lives-outside">🏘️ Lives Outside Constituency</option></select></div><div class="form-group"><label>Return Status <span class="text-muted" style="font-size:.6875rem">(overseas)</span></label><select class="form-input" id="segReturn"><option value="">Any</option><option>Unknown</option><option>Contacted</option><option>Confirmed Coming</option><option>Booked</option><option>Arrived</option><option>Not Coming</option></select></div></div>
+                <div id="blocToneHint" style="display:none;padding:.625rem .75rem;border-radius:var(--radius-sm);margin-bottom:.75rem;font-size:.75rem"></div>
+                <div class="form-group"><label>Target List <span class="text-muted" style="font-size:.6875rem">(curated)</span></label><select class="form-input" id="segTargetList"><option value="">Any</option></select></div>
                 <div class="form-group"><label style="display:flex;align-items:center;gap:.5rem;font-weight:400;font-size:.8125rem"><input type="checkbox" id="segHasPhone" checked style="width:auto"> Only include voters with a phone number</label></div>
                 <button class="btn btn-primary btn-block" onclick="buildCampaignQueue()">Generate Send Queue →</button>
             </div></div>
@@ -537,6 +547,77 @@
         <span class="text-muted" style="margin-left:auto;font-size:.8125rem" id="capCount">0 captains</span>
     </div>
     <div id="captainGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1rem"></div>
+</div>
+
+<!-- OVERSEAS VOTERS -->
+<div class="view hidden" id="overseasView">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem">
+        <h3 style="margin:0">✈️ Overseas Voters — Diaspora Return Coordination</h3>
+        <div class="btn-group"><button class="btn btn-sm btn-success" onclick="overseasWhatsApp()">💬 Message Confirmed</button><button class="btn btn-sm btn-outline" onclick="exportOverseasReport()">🖨️ Report</button></div>
+    </div>
+    <div class="stats-grid" id="overseasKPIs"></div>
+    <div class="grid-2 mb-3">
+        <div class="card"><div class="card-header">Return Pipeline</div><div class="card-body" id="overseasPipeline"></div></div>
+        <div class="card"><div class="card-header">Expected Arrivals (next 8 weeks)</div><div class="card-body"><div id="overseasArrivals" style="height:280px"></div></div></div>
+    </div>
+    <div class="grid-2 mb-3">
+        <div class="card"><div class="card-header">By Location</div><div class="card-body"><div id="overseasLocations" style="height:260px"></div></div></div>
+        <div class="card"><div class="card-header">By Constituency</div><div class="card-body"><div id="overseasConst" style="height:260px"></div></div></div>
+    </div>
+    <div class="card"><div class="card-header"><span>🛬 Airport Pickups Needed</span><span class="text-muted" style="font-size:.8125rem" id="pickupCount"></span></div><div class="card-body" id="overseasPickups"></div></div>
+    <div class="card" style="margin-top:1rem">
+        <div class="card-header"><span>Overseas Voter List</span></div>
+        <div class="filter-bar">
+            <select class="form-input" id="ovStatusFilter" onchange="renderOverseas()"><option value="">All Statuses</option><option>Unknown</option><option>Contacted</option><option>Confirmed Coming</option><option>Booked</option><option>Arrived</option><option>Not Coming</option></select>
+            <select class="form-input" id="ovConstFilter" onchange="renderOverseas()"><option value="">All Constituencies</option></select>
+            <select class="form-input" id="ovSupportFilter" onchange="renderOverseas()"><option value="">All Support</option><option>Strong</option><option>Medium</option><option>Soft</option><option>Undecided</option></select>
+            <input type="text" class="form-input" id="ovSearch" placeholder="Search name/location..." oninput="renderOverseas()">
+            <span class="text-muted" style="margin-left:auto;font-size:.8125rem" id="ovCount">0</span>
+        </div>
+        <div class="table-container"><table>
+            <thead><tr><th>Name</th><th>Support</th><th>Location</th><th>Constituency</th><th>Return Status</th><th>Arrival</th><th>Sponsor</th><th>Actions</th></tr></thead>
+            <tbody id="overseasTableBody"></tbody>
+        </table></div>
+    </div>
+</div>
+
+<!-- TARGET LISTS -->
+<div class="view hidden" id="targetlistsView">
+    <div class="page-header"><h3>🎯 Target Voter Lists</h3><button class="btn btn-primary" onclick="openTargetListModal()">+ New List</button></div>
+    <p class="text-muted" style="font-size:.8125rem;margin-bottom:1rem">Build curated lists of priority voters (capped per list, default 2,000). Add or remove voters easily, then use a list as a segment in the Comms Hub.</p>
+    <div id="targetListCards" class="grid-3 mb-3"></div>
+    <div class="card" id="targetListDetail" style="display:none">
+        <div class="card-header"><span id="tlDetailName">List</span><div class="btn-group"><button class="btn btn-xs btn-outline" onclick="editTargetList(ACTIVE_TL)">✏️ Edit</button><button class="btn btn-xs btn-success" onclick="useTargetListInComms()">💬 Use in Comms</button><button class="btn btn-xs btn-outline requires-export" onclick="exportTargetList()">📤 Export</button><button class="btn btn-xs btn-outline" onclick="clearTargetListMembers(ACTIVE_TL)">🧹 Clear</button></div></div>
+        <div class="card-body">
+            <div id="tlCapBar" style="margin-bottom:1rem"></div>
+            <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.875rem;margin-bottom:1rem">
+                <h5 style="font-size:.8125rem;margin-bottom:.5rem">⚡ Auto-Build List</h5>
+                <div class="form-row">
+                    <div class="form-group"><label>Constituency</label><select class="form-input" id="tlBuildConst"><option value="">All (in scope)</option></select></div>
+                    <div class="form-group"><label>Target</label><div style="display:flex;gap:.375rem"><input type="number" class="form-input" id="tlBuildTarget" value="500" min="1" style="flex:1"><select class="form-input" id="tlBuildMode" style="width:90px"><option value="count"># Voters</option><option value="pct">%</option></select></div></div>
+                </div>
+                <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+                    <button class="btn btn-sm btn-primary" style="flex:1;min-width:160px" onclick="autoBuildRandom()">🎲 Auto-Generate (count)</button>
+                    <button class="btn btn-sm btn-success" style="flex:1;min-width:160px" onclick="autoBuildRanked()">🏆 Build by Support Ranking</button>
+                </div>
+                <p class="text-muted" style="font-size:.6875rem;margin-top:.5rem">Ranking order: Solid → Medium → Soft → Undecided → (by commitment: Likely → Maybe → Unlikely) → Opposition. Respects the list cap. % is of the chosen constituency (or in-scope) voter count.</p>
+            </div>
+            <div class="grid-2">
+                <div>
+                    <h5 style="font-size:.8125rem;margin-bottom:.5rem">Add Voters</h5>
+                    <div class="filter-bar" style="margin-bottom:.5rem">
+                        <select class="form-input" id="tlAddConst" onchange="renderTLAddPool()"><option value="">All Constituencies</option></select>
+                        <input type="text" class="form-input" id="tlAddSearch" placeholder="Search name..." oninput="renderTLAddPool()">
+                    </div>
+                    <div id="tlAddPool" style="max-height:360px;overflow-y:auto"></div>
+                </div>
+                <div>
+                    <h5 style="font-size:.8125rem;margin-bottom:.5rem">In List (<span id="tlMemberCount">0</span>)</h5>
+                    <div id="tlMembers" style="max-height:400px;overflow-y:auto"></div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- GOTV RACE -->
@@ -620,7 +701,7 @@
 <div class="view hidden" id="tasksView">
     <div class="page-header"><h3>Tasks</h3><button class="btn btn-primary" onclick="openModal('taskModal')">+ Add Task</button></div>
     <div class="stats-grid" style="grid-template-columns:repeat(4,1fr)"><div class="stat-card"><div class="stat-value" id="taskTotal">0</div><div class="stat-label">Total</div></div><div class="stat-card"><div class="stat-value text-warning" id="taskPending">0</div><div class="stat-label">Pending</div></div><div class="stat-card"><div class="stat-value" style="color:var(--info)" id="taskInProgress">0</div><div class="stat-label">In Progress</div></div><div class="stat-card"><div class="stat-value text-success" id="taskCompleted">0</div><div class="stat-label">Completed</div></div></div>
-    <div class="card"><div class="table-container"><table><thead><tr><th>Task</th><th>Assignee</th><th>Priority</th><th>Due</th><th>Status</th><th>Actions</th></tr></thead><tbody id="taskTableBody"></tbody></table></div></div>
+    <div class="card"><div class="table-container"><table><thead><tr><th>Task</th><th>Assignee</th><th>Assigned By</th><th>Priority</th><th>Due</th><th>Status</th><th>Actions</th></tr></thead><tbody id="taskTableBody"></tbody></table></div></div>
 </div>
 
 <!-- DONATIONS -->
@@ -671,7 +752,21 @@
 
     <!-- TAB: Basic -->
     <div class="voter-tab-content" data-tab="basic">
-        <div class="form-row"><div class="form-group"><label>First Name *</label><input type="text" class="form-input" id="voterFirst"></div><div class="form-group"><label>Last Name *</label><input type="text" class="form-input" id="voterLast"></div></div>
+        <div style="display:flex;gap:1rem;align-items:flex-start;margin-bottom:.75rem">
+            <div style="flex-shrink:0;text-align:center">
+                <div id="voterPhotoPreview" style="width:96px;height:120px;border:2px dashed var(--border);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;background:var(--bg);overflow:hidden;font-size:2rem;color:var(--text-muted)">🪪</div>
+                <input type="hidden" id="voterPhoto">
+                <input type="file" id="voterPhotoFile" accept="image/*" capture="environment" style="display:none" onchange="handleVoterPhoto(this)">
+                <div style="margin-top:.375rem;display:flex;gap:.25rem;justify-content:center">
+                    <button type="button" class="btn btn-xs btn-outline" onclick="document.getElementById('voterPhotoFile').click()">📷 Photo</button>
+                    <button type="button" class="btn btn-xs btn-outline" id="voterPhotoDelBtn" onclick="deleteVoterPhoto()" style="display:none">🗑️</button>
+                </div>
+            </div>
+            <div style="flex:1">
+                <div class="form-row"><div class="form-group"><label>First Name *</label><input type="text" class="form-input" id="voterFirst"></div><div class="form-group"><label>Middle Name</label><input type="text" class="form-input" id="voterMiddle"></div></div>
+                <div class="form-row"><div class="form-group"><label>Alias / Nickname</label><input type="text" class="form-input" id="voterAlias" placeholder="e.g., Junior, Bossy"></div><div class="form-group"><label>Last Name *</label><input type="text" class="form-input" id="voterLast"></div></div>
+            </div>
+        </div>
         <div class="form-row-3"><div class="form-group"><label>Voter ID *</label><input type="text" class="form-input" id="voterVoterId"></div><div class="form-group"><label>DOB</label><input type="date" class="form-input" id="voterDob"></div><div class="form-group"><label>Gender</label><select class="form-input" id="voterGender"><option value="">-</option><option>Male</option><option>Female</option><option>Other</option></select></div></div>
         <div class="form-row-3"><div class="form-group"><label>Constituency *</label><select class="form-input" id="voterConst" onchange="updateVoterPDSelect();updateVoterStationSelect();updateVoterHHSelect()"></select></div><div class="form-group"><label>PD *</label><select class="form-input" id="voterPD" onchange="updateVoterStationSelect();updateVoterHHSelect()"></select></div><div class="form-group"><label>Voting Center</label><select class="form-input" id="voterStation"><option value="">-</option></select></div></div>
         <div class="form-row"><div class="form-group"><label>Household</label><select class="form-input" id="voterHousehold"><option value="">-</option></select></div><div class="form-group"><label>Household Role</label><select class="form-input" id="voterHHRole"><option value="">-</option><option value="head">Head</option><option value="spouse">Spouse</option><option value="child">Child</option><option value="parent">Parent</option><option value="sibling">Sibling</option><option value="other">Other</option></select></div></div>
@@ -682,9 +777,26 @@
     <!-- TAB: Support -->
     <div class="voter-tab-content hidden" data-tab="support">
         <div class="form-row"><div class="form-group"><label>Support Level (Level 1)</label><select class="form-input" id="voterSupportLevel"><option value="">-</option><option>Strong</option><option>Medium</option><option>Soft</option><option>Undecided</option><option>Opposition</option><option>Unknown</option></select></div><div class="form-group"><label>Commitment</label><select class="form-input" id="voterCommitment"><option value="">Unknown</option><option value="Definite">Definite</option><option value="Likely">Likely</option><option value="Maybe">Maybe</option><option value="Unlikely">Unlikely</option></select></div></div>
-        <div class="form-row"><div class="form-group"><label>Legacy Category <span class="text-muted" style="font-size:.6875rem">(used by priority queue)</span></label><select class="form-input" id="voterCategory"><option value="Reachable">Reachable</option><option value="Soft">Soft</option><option value="Solid">Solid</option><option value="Lost">Lost</option></select></div><div class="form-group"><label>Needs Ride?</label><select class="form-input" id="voterRide"><option value="no">No</option><option value="yes">Yes</option></select></div></div>
+        <div class="form-row"><div class="form-group"><label>Primary Emotional Bloc</label><select class="form-input" id="voterBloc" onchange="renderBlocInsight()"><option value="">Select persona...</option><option>The Loyalists</option><option>The Forgotten</option><option>The Aspirers</option><option>The Protectors</option><option>The Survivors</option><option>The Skeptics</option><option>The Caregivers</option><option>The Builders</option></select></div><div class="form-group"><label>Secondary Bloc</label><select class="form-input" id="voterBloc2" onchange="renderBlocInsight()"><option value="">None</option><option>The Loyalists</option><option>The Forgotten</option><option>The Aspirers</option><option>The Protectors</option><option>The Survivors</option><option>The Skeptics</option><option>The Caregivers</option><option>The Builders</option></select></div></div>
+        <div id="blocInsight" style="display:none;padding:.75rem;border-radius:var(--radius-sm);margin-bottom:.75rem;font-size:.75rem"></div>
+        <div class="form-group"><label>Needs Ride?</label><select class="form-input" id="voterRide"><option value="no">No</option><option value="yes">Yes</option></select></div>
         <div class="form-group"><label>Trigger Issue <span class="text-muted" style="font-size:.6875rem">(personal concern that motivates them)</span></label><input type="text" class="form-input" id="voterTrigger" placeholder="e.g., Grandson unemployed"></div>
         <div class="form-group"><label>Conversion Strategy</label><textarea class="form-input" id="voterStrategy" rows="3" placeholder="e.g., Listening session + youth opportunity linkage"></textarea></div>
+        <div style="margin-top:1rem;padding:.875rem;border:1.5px solid var(--border);border-radius:var(--radius-sm);background:var(--bg)">
+            <label style="display:flex;align-items:center;gap:.5rem;font-weight:600;cursor:pointer"><input type="checkbox" id="voterOverseas" onchange="toggleOverseasFields()" style="width:auto"> ✈️ Overseas Voter (Diaspora)</label>
+            <div id="overseasFields" class="hidden" style="margin-top:.75rem">
+                <div class="form-row"><div class="form-group"><label>Current Location</label><input type="text" class="form-input" id="voterOverseasLoc" placeholder="e.g., Brooklyn NY, Toronto, London, Tortola"></div><div class="form-group"><label>Return Status</label><select class="form-input" id="voterReturnStatus"><option>Unknown</option><option>Contacted</option><option>Confirmed Coming</option><option>Booked</option><option>Arrived</option><option>Not Coming</option></select></div></div>
+                <div class="form-row"><div class="form-group"><label>Expected Arrival</label><input type="date" class="form-input" id="voterExpectedArrival"></div><div class="form-group"><label>Sponsor / Coordinator</label><input type="text" class="form-input" id="voterReturnSponsor" placeholder="Who's bringing them home?"></div></div>
+                <label style="display:flex;align-items:center;gap:.5rem;font-size:.8125rem"><input type="checkbox" id="voterAirportPickup" style="width:auto"> 🛬 Needs airport pickup (creates a dispatch ride)</label>
+            </div>
+        </div>
+        <div style="margin-top:.75rem;padding:.875rem;border:1.5px solid var(--border);border-radius:var(--radius-sm);background:var(--bg)">
+            <label style="display:flex;align-items:center;gap:.5rem;font-weight:600;cursor:pointer"><input type="checkbox" id="voterLivesOutside" onchange="toggleResidenceFields()" style="width:auto"> 🏘️ Lives Outside Constituency</label>
+            <div id="residenceFields" class="hidden" style="margin-top:.75rem">
+                <p class="text-muted" style="font-size:.6875rem;margin-bottom:.5rem">Voter is registered/votes in <strong id="resRegConst">this constituency</strong> but actually resides elsewhere (e.g., Cayon, or Newtown, Basseterre). Useful for transport and canvass logistics.</p>
+                <div class="form-row"><div class="form-group"><label>Residence Area</label><input type="text" class="form-input" id="voterResidenceLoc" placeholder="e.g., Cayon, Newtown Basseterre"></div><div class="form-group"><label>Resides in Constituency</label><select class="form-input" id="voterResidenceConst"><option value="">Unknown</option></select></div></div>
+            </div>
+        </div>
     </div>
 
     <!-- TAB: Emotional -->
@@ -712,7 +824,7 @@
         </div>
     </div>
 </div>
-<div class="modal-footer"><button class="btn btn-danger hidden" id="deleteVoterBtn" onclick="deleteVoter()" style="margin-right:auto">Delete</button><button class="btn btn-outline" onclick="closeModal('voterModal')">Cancel</button><button class="btn btn-primary" onclick="saveVoter()">Save</button></div>
+<div class="modal-footer"><button class="btn btn-danger hidden requires-delete-voters" id="deleteVoterBtn" onclick="deleteVoter()" style="margin-right:auto">Delete</button><button class="btn btn-outline" onclick="closeModal('voterModal')">Cancel</button><button class="btn btn-primary" onclick="saveVoter()">Save</button></div>
 </div></div>
 
 <!-- POLLING STATION MODAL -->
@@ -733,9 +845,9 @@
 <div class="modal-overlay" id="assignDriverModal"><div class="modal"><div class="modal-header"><h3 class="modal-title">Assign Driver</h3><button class="modal-close" onclick="closeModal('assignDriverModal')">×</button></div><div class="modal-body"><input type="hidden" id="assignRideId"><div id="rideDetails" class="mb-2" style="padding:.875rem;background:var(--bg);border-radius:var(--radius-sm)"></div><div class="form-group"><label>Driver *</label><select class="form-input" id="assignDriverSelect"></select></div></div><div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('assignDriverModal')">Cancel</button><button class="btn btn-primary" onclick="assignDriver()">Assign</button></div></div></div>
 <div class="modal-overlay" id="incidentModal"><div class="modal"><div class="modal-header"><h3 class="modal-title">Report Incident</h3><button class="modal-close" onclick="closeModal('incidentModal')">×</button></div><div class="modal-body"><div class="form-row"><div class="form-group"><label>Type *</label><select class="form-input" id="incidentType"><option value="">Select...</option><option value="Voter Challenge">Voter Challenge</option><option value="Machine Issue">Machine Issue</option><option value="Long Lines">Long Lines</option><option value="Intimidation">Intimidation</option><option value="Other">Other</option></select></div><div class="form-group"><label>Severity</label><select class="form-input" id="incidentSeverity"><option value="Low">Low</option><option value="Medium">Medium</option><option value="High">High</option><option value="Critical">Critical</option></select></div></div><div class="form-group"><label>Location</label><input type="text" class="form-input" id="incidentLocation"></div><div class="form-group"><label>Description *</label><textarea class="form-input" id="incidentDesc" rows="3"></textarea></div></div><div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('incidentModal')">Cancel</button><button class="btn btn-danger" onclick="saveIncident()">Report</button></div></div></div>
 <div class="modal-overlay" id="volunteerModal"><div class="modal"><div class="modal-header"><h3 class="modal-title">Add Volunteer</h3><button class="modal-close" onclick="closeModal('volunteerModal')">×</button></div><div class="modal-body"><div class="form-row"><div class="form-group"><label>First Name *</label><input type="text" class="form-input" id="volFirst"></div><div class="form-group"><label>Last Name *</label><input type="text" class="form-input" id="volLast"></div></div><div class="form-row"><div class="form-group"><label>Phone *</label><input type="tel" class="form-input" id="volPhone"></div><div class="form-group"><label>Email</label><input type="email" class="form-input" id="volEmail"></div></div><div class="form-group"><label>Role</label><select class="form-input" id="volRole"><option value="Canvasser">Canvasser</option><option value="Phone Bank">Phone Bank</option><option value="Driver">Driver</option><option value="Poll Watcher">Poll Watcher</option><option value="Office">Office</option></select></div></div><div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('volunteerModal')">Cancel</button><button class="btn btn-primary" onclick="saveVolunteer()">Add</button></div></div></div>
-<div class="modal-overlay" id="taskModal"><div class="modal"><div class="modal-header"><h3 class="modal-title">Add Task</h3><button class="modal-close" onclick="closeModal('taskModal')">×</button></div><div class="modal-body"><div class="form-group"><label>Title *</label><input type="text" class="form-input" id="taskTitle"></div><div class="form-group"><label>Description</label><textarea class="form-input" id="taskDesc" rows="2"></textarea></div><div class="form-row"><div class="form-group"><label>Priority</label><select class="form-input" id="taskPriority"><option value="Low">Low</option><option value="Medium">Medium</option><option value="High">High</option><option value="Urgent">Urgent</option></select></div><div class="form-group"><label>Due Date</label><input type="date" class="form-input" id="taskDue"></div></div><div class="form-group"><label>Assign To</label><select class="form-input" id="taskAssignee"><option value="">Unassigned</option></select></div></div><div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('taskModal')">Cancel</button><button class="btn btn-primary" onclick="saveTask()">Add</button></div></div></div>
+<div class="modal-overlay" id="taskModal"><div class="modal"><div class="modal-header"><h3 class="modal-title">Add Task</h3><button class="modal-close" onclick="closeModal('taskModal')">×</button></div><div class="modal-body"><div class="form-group"><label>Title *</label><input type="text" class="form-input" id="taskTitle"></div><div class="form-group"><label>Description</label><textarea class="form-input" id="taskDesc" rows="2"></textarea></div><div class="form-row"><div class="form-group"><label>Priority</label><select class="form-input" id="taskPriority"><option value="Low">Low</option><option value="Medium">Medium</option><option value="High">High</option><option value="Urgent">Urgent</option></select></div><div class="form-group"><label>Due Date</label><input type="date" class="form-input" id="taskDue"></div></div><div class="form-group"><label>Assign To</label><select class="form-input" id="taskAssignee"><option value="">Unassigned</option></select></div><div class="form-group"><label>Assigned By</label><select class="form-input" id="taskAssignedBy"><option value="">— Select —</option></select></div></div><div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('taskModal')">Cancel</button><button class="btn btn-primary" onclick="saveTask()">Add</button></div></div></div>
 <div class="modal-overlay" id="donationModal"><div class="modal"><div class="modal-header"><h3 class="modal-title">Record Donation</h3><button class="modal-close" onclick="closeModal('donationModal')">×</button></div><div class="modal-body"><div class="form-row"><div class="form-group"><label>Donor *</label><input type="text" class="form-input" id="donorName"></div><div class="form-group"><label>Amount *</label><input type="number" class="form-input" id="donAmount" min="0" step="0.01"></div></div><div class="form-row"><div class="form-group"><label>Method</label><select class="form-input" id="donMethod"><option value="Cash">Cash</option><option value="Check">Check</option><option value="Bank Transfer">Bank Transfer</option><option value="Online">Online</option></select></div><div class="form-group"><label>Date</label><input type="date" class="form-input" id="donDate"></div></div><div class="form-group"><label>Notes</label><textarea class="form-input" id="donNotes" rows="2"></textarea></div></div><div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('donationModal')">Cancel</button><button class="btn btn-success" onclick="saveDonation()">Record</button></div></div></div>
-<div class="modal-overlay" id="userModal"><div class="modal"><div class="modal-header"><h3 class="modal-title">Add User</h3><button class="modal-close" onclick="closeModal('userModal')">×</button></div><div class="modal-body"><div class="form-row"><div class="form-group"><label>First Name *</label><input type="text" class="form-input" id="userFirst"></div><div class="form-group"><label>Last Name *</label><input type="text" class="form-input" id="userLast"></div></div><div class="form-group"><label>Email *</label><input type="email" class="form-input" id="userEmail"></div><div class="form-row"><div class="form-group"><label>Password *</label><input type="password" class="form-input" id="userPassword"></div><div class="form-group"><label>Role</label><select class="form-input" id="userRoleSelect"><option value="volunteer">Volunteer</option><option value="coordinator">Coordinator</option><option value="manager">Manager</option><option value="admin">Admin</option></select></div></div></div><div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('userModal')">Cancel</button><button class="btn btn-primary" onclick="saveUser()">Add</button></div></div></div>
+<div class="modal-overlay" id="userModal"><div class="modal"><div class="modal-header"><h3 class="modal-title">Add User</h3><button class="modal-close" onclick="closeModal('userModal')">×</button></div><div class="modal-body"><div class="form-row"><div class="form-group"><label>First Name *</label><input type="text" class="form-input" id="userFirst"></div><div class="form-group"><label>Last Name *</label><input type="text" class="form-input" id="userLast"></div></div><div class="form-group"><label>Email *</label><input type="email" class="form-input" id="userEmail"></div><div class="form-row"><div class="form-group"><label>Password *</label><input type="password" class="form-input" id="userPassword"></div><div class="form-group"><label>Role</label><select class="form-input" id="userRoleSelect"><optgroup label="Full Access"><option value="Candidate">Candidate</option><option value="Chief Technical Manager">Chief Technical Manager</option><option value="Deputy Admin">Deputy Admin</option><option value="Campaign Manager">Campaign Manager</option><option value="admin">Admin</option></optgroup><optgroup label="Restricted Access"><option value="Office Attendant">Office Attendant</option><option value="Secretary">Secretary</option><option value="Field Canvasser">Field Canvasser</option><option value="Election Day Polling Team Lead">Election Day Polling Team Lead</option><option value="Election Day Polling Team Member">Election Day Polling Team Member</option></optgroup></select></div></div></div><div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('userModal')">Cancel</button><button class="btn btn-primary" onclick="saveUser()">Add</button></div></div></div>
 <div class="modal-overlay" id="watcherModal"><div class="modal"><div class="modal-header"><h3 class="modal-title">Add Poll Watcher</h3><button class="modal-close" onclick="closeModal('watcherModal')">×</button></div><div class="modal-body"><div class="form-row"><div class="form-group"><label>First Name *</label><input type="text" class="form-input" id="watcherFirst"></div><div class="form-group"><label>Last Name *</label><input type="text" class="form-input" id="watcherLast"></div></div><div class="form-group"><label>Phone *</label><input type="tel" class="form-input" id="watcherPhone"></div><div class="form-group"><label>Assign to PD</label><select class="form-input" id="watcherPD"><option value="">Unassigned</option></select></div></div><div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('watcherModal')">Cancel</button><button class="btn btn-primary" onclick="saveWatcher()">Add</button></div></div></div>
 <div class="modal-overlay" id="watcherReportModal"><div class="modal"><div class="modal-header"><h3 class="modal-title">File PD Report</h3><button class="modal-close" onclick="closeModal('watcherReportModal')">×</button></div><div class="modal-body"><div class="form-group"><label>Polling Station *</label><select class="form-input" id="reportPD"><option value="">Select...</option></select></div><div class="form-group"><label>Type *</label><select class="form-input" id="reportType"><option value="Update">General Update</option><option value="Turnout">Turnout Report</option><option value="Issue">Issue/Alert</option></select></div><div class="form-group"><label>Report *</label><textarea class="form-input" id="reportText" rows="3" placeholder="Describe what's happening..."></textarea></div></div><div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('watcherReportModal')">Cancel</button><button class="btn btn-info" onclick="saveWatcherReport()">File Report</button></div></div></div>
 <div class="modal-overlay" id="scriptModal"><div class="modal modal-lg"><div class="modal-header"><h3 class="modal-title">Create Script Template</h3><button class="modal-close" onclick="closeModal('scriptModal')">×</button></div><div class="modal-body"><div class="form-group"><label>Template Name *</label><input type="text" class="form-input" id="scriptName" placeholder="e.g., GOTV Reminder"></div><div class="form-group"><label>Channel</label><select class="form-input" id="scriptChannel"><option value="whatsapp">WhatsApp</option><option value="sms">SMS</option><option value="call">Call Script</option></select></div><div class="form-group"><label>Message *</label><textarea class="form-input" id="scriptBody" rows="5" placeholder="Use {firstName}, {lastName}, {constituency}, {pd} as merge fields..."></textarea></div><p class="text-muted" style="font-size:.6875rem">Available: {firstName} {lastName} {constituency} {pd} {phone} {category} {commitment}</p></div><div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('scriptModal')">Cancel</button><button class="btn btn-primary" onclick="saveScriptTemplate()">Save</button></div></div></div>
@@ -841,6 +953,28 @@
 <div class="modal-footer"><button class="btn btn-danger hidden" id="deleteInfBtn" onclick="deleteInfluencer()" style="margin-right:auto">Delete</button><button class="btn btn-outline" onclick="closeModal('influencerModal')">Cancel</button><button class="btn btn-primary" onclick="saveInfluencer()">Save</button></div>
 </div></div>
 
+<!-- TARGET LIST MODAL -->
+<div class="modal-overlay" id="targetListModal"><div class="modal"><div class="modal-header"><h3 class="modal-title" id="tlModalTitle">New Target List</h3><button class="modal-close" onclick="closeModal('targetListModal')">×</button></div>
+<div class="modal-body">
+    <input type="hidden" id="tlEditId">
+    <div class="form-group"><label>List Name *</label><input type="text" class="form-input" id="tlName" placeholder="e.g., C8 Priority Persuadables"></div>
+    <div class="form-row"><div class="form-group"><label>Constituency (optional)</label><select class="form-input" id="tlConst"><option value="">Any</option></select></div><div class="form-group"><label>Cap</label><input type="number" class="form-input" id="tlCap" value="2000" min="1"></div></div>
+    <div class="form-group"><label>Notes</label><input type="text" class="form-input" id="tlNotes" placeholder="Purpose of this list"></div>
+</div>
+<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('targetListModal')">Cancel</button><button class="btn btn-primary" id="tlSaveBtn" onclick="saveTargetList()">Create</button></div>
+</div></div>
+
+<!-- BATCH SEND MODAL -->
+<div class="modal-overlay" id="batchSendModal"><div class="modal"><div class="modal-header"><h3 class="modal-title">🚀 Batch Send</h3><button class="modal-close" onclick="closeBatchSend()">×</button></div>
+<div class="modal-body" id="batchSendBody"></div>
+</div></div>
+
+<!-- BROADCAST HELPER MODAL -->
+<div class="modal-overlay" id="broadcastModal"><div class="modal modal-lg"><div class="modal-header"><h3 class="modal-title">📢 Broadcast / Bulk Send</h3><button class="modal-close" onclick="closeModal('broadcastModal')">×</button></div>
+<div class="modal-body" id="broadcastBody"></div>
+<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('broadcastModal')">Close</button></div>
+</div></div>
+
 <div id="toastContainer" class="toast-container"></div>
 <script>
 // ===== CONFIG & STATE =====
@@ -851,7 +985,7 @@ let CONSTITUENCIES=[{id:'C1',name:'St. Christopher 1',island:'st-kitts'},{id:'C2
 let PDS=[];CONSTITUENCIES.forEach(c=>{for(let i=1;i<=3;i++)PDS.push({id:`${c.id}-PD${i}`,code:`${c.id}-PD${i}`,name:`${c.name} PD ${i}`,constituencyId:c.id,island:c.island})});
 
 // Table name map: JS key → Supabase table
-const TBL={voters:'voters',contacts:'contacts',drivers:'drivers',rides:'rides',incidents:'incidents',volunteers:'volunteers',tasks:'tasks',donations:'donations',watchers:'watchers',scriptTemplates:'script_templates',shifts:'shifts',watcherReports:'watcher_reports',results:'results',activityLog:'activity_log',pollingStations:'polling_stations',households:'households',casework:'casework',influencers:'influencers',constituenciesDB:'constituencies',pollingDivisionsDB:'polling_divisions',campaigns:'campaigns',messages:'messages',captains:'captains'};
+const TBL={voters:'voters',contacts:'contacts',drivers:'drivers',rides:'rides',incidents:'incidents',volunteers:'volunteers',tasks:'tasks',donations:'donations',watchers:'watchers',scriptTemplates:'script_templates',shifts:'shifts',watcherReports:'watcher_reports',results:'results',activityLog:'activity_log',pollingStations:'polling_stations',households:'households',casework:'casework',influencers:'influencers',constituenciesDB:'constituencies',pollingDivisionsDB:'polling_divisions',campaigns:'campaigns',messages:'messages',captains:'captains',targetLists:'target_lists',supportHistory:'support_history'};
 
 // EI Matrix dictionaries
 const SUPPORT_LEVELS=['Strong','Medium','Soft','Undecided','Opposition','Unknown'];
@@ -859,6 +993,95 @@ const EMOTIONAL_STATES=['Hopeful','Angry','Forgotten','Ambitious','Frustrated','
 const LOVE_LANGUAGES=['Wants attention','Wants responsiveness','Wants respect','Wants access','Wants inclusion','Wants problem solving','Wants opportunity','Wants visibility'];
 const CORE_TRIBES=['Church','Sports','Fisherfolk','Agriculture','Youth','Mothers','Seniors','Business','Creative sector','Diaspora family','Community activist'];
 const COMM_STYLES=['WhatsApp','Voice notes','Personal call','Facebook','Community meetings','One-on-one','Public recognition','Quiet/private engagement'];
+const RETURN_STATUSES=['Unknown','Contacted','Confirmed Coming','Booked','Arrived','Not Coming'];
+const RETURN_STATUS_COLORS={'Unknown':'neutral','Contacted':'info','Confirmed Coming':'warning','Booked':'primary','Arrived':'success','Not Coming':'danger'};
+// Likelihood weighting for win-projection (overseas voters count less until confirmed)
+const RETURN_WEIGHT={'Arrived':1.0,'Booked':0.85,'Confirmed Coming':0.6,'Contacted':0.25,'Unknown':0.1,'Not Coming':0.0};
+function returnBadge(s){return '<span class="badge badge-'+(RETURN_STATUS_COLORS[s]||'neutral')+'">'+(s||'Unknown')+'</span>'}
+
+// ===== 8 EMOTIONAL BLOCS (voter persona) =====
+const EMOTIONAL_BLOCS={
+    'The Loyalists':{emotion:'Pride & Belonging',desire:'To feel valued, respected, and included in the movement',respond:'Appreciation, public acknowledgment, inclusion in events & decisions',tone:'"Together we built this." "You are the backbone of progress."',color:'#059669',icon:'🤝'},
+    'The Forgotten':{emotion:'Neglect & Disappointment',desire:'To feel seen and remembered',respond:'Personal visits, listening sessions, direct follow-up, genuine empathy',tone:'"We see you." "No community left behind."',color:'#d97706',icon:'👁️'},
+    'The Aspirers':{emotion:'Ambition & Hope',desire:'Opportunity and upward mobility',respond:'Mentorship, scholarships, jobs, entrepreneurship, innovation',tone:'"The future belongs to you." "We are building pathways to success."',color:'#0891b2',icon:'🚀'},
+    'The Protectors':{emotion:'Fear of Decline',desire:'Stability, safety, and preservation of community',respond:'Security initiatives, infrastructure, strong leadership, restoration',tone:'"We are protecting our communities." "Order, safety, and stability."',color:'#1e3a5f',icon:'🛡️'},
+    'The Survivors':{emotion:'Stress & Survival Anxiety',desire:'Relief, support, and economic security',respond:'Direct assistance, jobs, food support, cost-of-living relief',tone:'"We understand the pressures families face." "No one should struggle alone."',color:'#dc2626',icon:'🆘'},
+    'The Skeptics':{emotion:'Distrust & Frustration',desire:'Proof, consistency, and authenticity',respond:'Measurable results, transparency, consistency, accountability',tone:'"Judge us by the results." "Here is the evidence of progress."',color:'#7c3aed',icon:'🔍'},
+    'The Caregivers':{emotion:'Responsibility & Emotional Burden',desire:'Support for family and community wellbeing',respond:'Compassion, family programs, healthcare, education & youth initiatives',tone:'"We support those who support others." "Strong families build strong communities."',color:'#db2777',icon:'💗'},
+    'The Builders':{emotion:'Purpose & Achievement',desire:'To contribute to growth and transformation',respond:'Major projects, investment, leadership engagement, nation-building',tone:'"We are building the future together." "This generation must leave a legacy."',color:'#ca8a04',icon:'🏗️'}
+};
+const BLOC_NAMES=Object.keys(EMOTIONAL_BLOCS);
+function blocBadge(b){if(!b)return '';const d=EMOTIONAL_BLOCS[b];return '<span class="badge" style="background:'+(d?d.color:'#94a3b8')+';color:#fff">'+(d?d.icon+' ':'')+b+'</span>'}
+// Full display name: First [Middle] ["Alias"] Last
+function voterDisplayName(v){
+    let parts=[v.firstName];
+    if(v.middleName)parts.push(v.middleName);
+    if(v.alias)parts.push('"'+v.alias+'"');
+    parts.push(v.lastName);
+    return parts.filter(Boolean).join(' ');
+}
+// Derive legacy category from support level (keeps priority queue working without a UI field)
+function deriveCategory(supportLevel){return {Strong:'Solid',Medium:'Solid',Soft:'Soft',Undecided:'Reachable',Opposition:'Lost',Unknown:'Reachable'}[supportLevel]||'Reachable'}
+
+// ===== SUPPORT HISTORY (sentiment / support over time) =====
+function logSupportHistory(voterId,supportLevel,emotionalState,status,note){
+    const d=getData();
+    if(!d.supportHistory)d.supportHistory=[];
+    d.supportHistory.push({
+        id:genId(),voterId:voterId,supportLevel:supportLevel||null,emotionalState:emotionalState||null,
+        status:status||'updated',note:note||null,
+        recordedBy:AS.currentUser?(AS.currentUser.firstName+' '+AS.currentUser.lastName):'system',
+        recordedAt:new Date().toISOString()
+    });
+    // caller is responsible for saveData (to batch)
+}
+function voterHistory(voterId){return (CACHE.supportHistory||[]).filter(h=>h.voterId===voterId).sort((a,b)=>(a.recordedAt||'').localeCompare(b.recordedAt||''))}
+function exportVoterHistory(voterId){
+    if(!can('export')){toast('Your role cannot export data','error');return}
+    const v=(CACHE.voters||[]).find(x=>x.id===voterId);
+    const hist=voterHistory(voterId);
+    const h='date,support_level,emotional_state,status,note,recorded_by\n';
+    const rows=hist.map(x=>`${x.recordedAt},${x.supportLevel||''},${x.emotionalState||''},${x.status||''},"${(x.note||'').replace(/"/g,'""')}",${x.recordedBy||''}`).join('\n');
+    downloadFile('support_history_'+(v?v.lastName:'voter')+'.csv',h+rows,'text/csv');toast('Exported','success');
+}
+function exportAllSupportHistory(){
+    if(!can('export')){toast('Your role cannot export data','error');return}
+    const hist=(CACHE.supportHistory||[]).slice().sort((a,b)=>(a.recordedAt||'').localeCompare(b.recordedAt||''));
+    if(!hist.length){toast('No support history recorded yet','info');return}
+    const vmap={};(CACHE.voters||[]).forEach(v=>vmap[v.id]=v);
+    const h='date,voter,voterId,constituency,support_level,emotional_state,status,note,recorded_by\n';
+    const rows=hist.map(x=>{const v=vmap[x.voterId]||{};return `${x.recordedAt},${(v.firstName||'')+' '+(v.lastName||'')},${v.voterId||''},${v.constituencyId||''},${x.supportLevel||''},${x.emotionalState||''},${x.status||''},"${(x.note||'').replace(/"/g,'""')}",${x.recordedBy||''}`}).join('\n');
+    downloadFile('all_support_history.csv',h+rows,'text/csv');addActivity('exported support history','📤');toast('Exported '+hist.length+' records','success');
+}
+
+// ===== ROLE-BASED ACCESS CONTROL =====
+const ALL_ROLES=['admin','Candidate','Chief Technical Manager','Deputy Admin','Campaign Manager','Office Attendant','Secretary','Field Canvasser','Election Day Polling Team Lead','Election Day Polling Team Member'];
+const FULL_ACCESS_ROLES=['admin','Candidate','Chief Technical Manager','Deputy Admin','Campaign Manager'];
+// Restricted roles are denied these permissions:
+const RESTRICTED_DENY=['comms','export','credentials','deleteVoters'];
+function hasFullAccess(){return AS.currentUser&&FULL_ACCESS_ROLES.includes(AS.currentUser.role)}
+function can(perm){
+    if(!AS.currentUser)return false;
+    if(hasFullAccess())return true;
+    return !RESTRICTED_DENY.includes(perm);
+}
+function applyPermissions(){
+    const full=hasFullAccess();
+    // Nav items restricted roles cannot see
+    const navDeny={comms:'comms',export:'export',users:'credentials',settings:'credentials'};
+    document.querySelectorAll('.nav-item[data-view]').forEach(item=>{
+        const v=item.dataset.view;
+        if(navDeny[v]&&!can(navDeny[v]))item.style.display='none';
+        else item.style.display='';
+    });
+    // Mobile quicknav (comms shortcut if any)
+    // Delete-voter button visibility
+    document.body.classList.toggle('no-delete-voters',!can('deleteVoters'));
+    document.body.classList.toggle('no-export',!can('export'));
+    // Show current role somewhere if element exists
+    const rb=document.getElementById('currentRoleBadge');
+    if(rb&&AS.currentUser)rb.textContent=AS.currentUser.role||'user';
+}
 const SUPPORT_COLORS={Strong:'success',Medium:'info',Soft:'warning',Undecided:'neutral',Opposition:'danger',Unknown:'neutral'};
 function supportBadge(s){const c=SUPPORT_COLORS[s]||'neutral';return '<span class="badge badge-'+c+'">'+(s||'Unknown')+'</span>'}
 function csvToArr(s){return s?s.split(',').map(x=>x.trim()).filter(Boolean):[]}
@@ -871,7 +1094,7 @@ function rowsToSnake(arr){return(arr||[]).map(toSnake)}
 function rowsToCamel(arr){return(arr||[]).map(toCamel)}
 
 // ===== LOCAL CACHE =====
-const CACHE={voters:[],contacts:[],drivers:[],rides:[],incidents:[],volunteers:[],tasks:[],donations:[],watchers:[],scriptTemplates:[],shifts:[],watcherReports:[],results:{},activityLog:[],users:[],pollingStations:[],households:[],casework:[],influencers:[],constituenciesDB:[],pollingDivisionsDB:[],campaigns:[],messages:[],captains:[]};
+const CACHE={voters:[],contacts:[],drivers:[],rides:[],incidents:[],volunteers:[],tasks:[],donations:[],watchers:[],scriptTemplates:[],shifts:[],watcherReports:[],results:{},activityLog:[],users:[],pollingStations:[],households:[],casework:[],influencers:[],constituenciesDB:[],pollingDivisionsDB:[],campaigns:[],messages:[],captains:[],targetLists:[],supportHistory:[]};
 let _opQueue=[],_processing=false;
 
 function getData(){
@@ -880,14 +1103,26 @@ function getData(){
     if(Array.isArray(CACHE.results)){
         CACHE.results.forEach(r=>{res[r.constituencyId]={ours:r.ours||0,theirs:r.theirs||0,other:r.other||0}});
     }else{
-        Object.assign(res,CACHE.results);
+        Object.assign(res,CACHE.results||{});
     }
-    return{voters:[...CACHE.voters],contacts:[...CACHE.contacts],drivers:[...CACHE.drivers],rides:[...CACHE.rides],incidents:[...CACHE.incidents],volunteers:[...CACHE.volunteers],tasks:[...CACHE.tasks],donations:[...CACHE.donations],watchers:[...CACHE.watchers],scriptTemplates:[...CACHE.scriptTemplates],shifts:[...CACHE.shifts],watcherReports:[...CACHE.watcherReports],results:res,activityLog:[...CACHE.activityLog],users:[...CACHE.users]};
+    // IMPORTANT: must include EVERY table that saveData() diffs, otherwise saveData
+    // treats omitted tables as emptied and deletes their records.
+    return{
+        voters:[...(CACHE.voters||[])],contacts:[...(CACHE.contacts||[])],drivers:[...(CACHE.drivers||[])],
+        rides:[...(CACHE.rides||[])],incidents:[...(CACHE.incidents||[])],volunteers:[...(CACHE.volunteers||[])],
+        tasks:[...(CACHE.tasks||[])],donations:[...(CACHE.donations||[])],watchers:[...(CACHE.watchers||[])],
+        scriptTemplates:[...(CACHE.scriptTemplates||[])],shifts:[...(CACHE.shifts||[])],watcherReports:[...(CACHE.watcherReports||[])],
+        results:res,activityLog:[...(CACHE.activityLog||[])],pollingStations:[...(CACHE.pollingStations||[])],
+        households:[...(CACHE.households||[])],casework:[...(CACHE.casework||[])],influencers:[...(CACHE.influencers||[])],
+        constituenciesDB:[...(CACHE.constituenciesDB||[])],pollingDivisionsDB:[...(CACHE.pollingDivisionsDB||[])],
+        campaigns:[...(CACHE.campaigns||[])],messages:[...(CACHE.messages||[])],captains:[...(CACHE.captains||[])],
+        targetLists:[...(CACHE.targetLists||[])],supportHistory:[...(CACHE.supportHistory||[])],users:[...(CACHE.users||[])]
+    };
 }
 
 function saveData(d){
     // Diff each table and sync to Supabase
-    const tables=['voters','contacts','drivers','rides','incidents','volunteers','tasks','donations','watchers','scriptTemplates','shifts','watcherReports','activityLog','pollingStations','households','casework','influencers','constituenciesDB','pollingDivisionsDB','campaigns','messages','captains'];
+    const tables=['voters','contacts','drivers','rides','incidents','volunteers','tasks','donations','watchers','scriptTemplates','shifts','watcherReports','activityLog','pollingStations','households','casework','influencers','constituenciesDB','pollingDivisionsDB','campaigns','messages','captains','targetLists','supportHistory'];
     const ops=[];
     tables.forEach(key=>{
         const oldArr=CACHE[key]||[];
@@ -945,12 +1180,19 @@ async function syncOps(ops){
     finally{_processing=false}
 }
 
+function pendingOfflineCount(){try{return JSON.parse(localStorage.getItem('offline_queue')||'[]').length}catch(e){return 0}}
 function updateSyncStatus(s){
     const el=document.getElementById('syncStatus');
     if(!el)return;
+    const pending=pendingOfflineCount();
     const m={online:'🟢 Synced',syncing:'🟡 Syncing...',offline:'🔴 Offline'};
     el.className='sync-indicator sync-'+s;
-    el.textContent=m[s]||s;
+    let txt=m[s]||s;
+    if(pending>0&&s!=='syncing')txt=(s==='offline'?'🔴 Offline':'🟠 Pending')+' · '+pending+' to sync';
+    el.textContent=txt;
+    el.style.cursor=pending>0?'pointer':'default';
+    el.title=pending>0?'Tap to retry syncing '+pending+' queued change(s)':'';
+    el.onclick=pending>0?()=>{updateSyncStatus('syncing');replayOfflineQueue()}:null;
 }
 
 // ===== LOAD ALL DATA FROM SUPABASE =====
@@ -959,24 +1201,28 @@ async function fetchAllRows(table){
     const PAGE=1000;
     let all=[];
     let from=0;
+    let errored=false;
     while(true){
         const{data,error}=await SB.from(table).select('*').range(from,from+PAGE-1);
-        if(error){console.error('Load error:',table,error.message);break}
+        if(error){console.error('Load error:',table,error.message);errored=true;break}
         if(!data||data.length===0)break;
         all=all.concat(data);
         if(data.length<PAGE)break;
         from+=PAGE;
         if(from>50000)break; // safety cap
     }
+    // Return null on a hard error so callers don't overwrite good cached data with []
+    if(errored&&all.length===0)return null;
     return all;
 }
 
 async function loadAllData(){
     updateSyncStatus('syncing');
-    const tables=['voters','contacts','drivers','rides','incidents','volunteers','tasks','donations','watchers','script_templates','shifts','watcher_reports','results','activity_log','polling_stations','households','casework','influencers','constituencies','polling_divisions','campaigns','messages','captains'];
-    const keys=['voters','contacts','drivers','rides','incidents','volunteers','tasks','donations','watchers','scriptTemplates','shifts','watcherReports','results','activityLog','pollingStations','households','casework','influencers','constituenciesDB','pollingDivisionsDB','campaigns','messages','captains'];
+    const tables=['voters','contacts','drivers','rides','incidents','volunteers','tasks','donations','watchers','script_templates','shifts','watcher_reports','results','activity_log','polling_stations','households','casework','influencers','constituencies','polling_divisions','campaigns','messages','captains','target_lists','support_history'];
+    const keys=['voters','contacts','drivers','rides','incidents','volunteers','tasks','donations','watchers','scriptTemplates','shifts','watcherReports','results','activityLog','pollingStations','households','casework','influencers','constituenciesDB','pollingDivisionsDB','campaigns','messages','captains','targetLists','supportHistory'];
     for(let i=0;i<tables.length;i++){
         const data=await fetchAllRows(tables[i]);
+        if(data===null)continue; // table missing/unreachable — keep existing cache, don't wipe
         if(keys[i]==='results'){
             CACHE.results=data.map(toCamel);
         }else{
@@ -984,7 +1230,7 @@ async function loadAllData(){
         }
     }
     // Load profiles as users
-    const profiles=await fetchAllRows('profiles');
+    const profiles=await fetchAllRows('profiles')||[];
     CACHE.users=profiles.map(p=>({id:p.id,email:p.email,firstName:p.first_name,lastName:p.last_name,role:p.role,status:p.status}));
     console.log('[LOAD] voters:',CACHE.voters.length,'contacts:',CACHE.contacts.length,'users:',CACHE.users.length);
     refreshGeoArrays();
@@ -1019,8 +1265,8 @@ async function autoSeed(){
 // ===== REALTIME SUBSCRIPTIONS =====
 function setupRealtime(){
     if(!SB)return;
-    const tables=['voters','contacts','drivers','rides','incidents','volunteers','tasks','donations','watchers','script_templates','shifts','watcher_reports','results','activity_log','polling_stations','households','casework','influencers','constituencies','polling_divisions','campaigns','messages','captains','profiles'];
-    const keys=['voters','contacts','drivers','rides','incidents','volunteers','tasks','donations','watchers','scriptTemplates','shifts','watcherReports','results','activityLog','pollingStations','households','casework','influencers','constituenciesDB','pollingDivisionsDB','campaigns','messages','captains','users'];
+    const tables=['voters','contacts','drivers','rides','incidents','volunteers','tasks','donations','watchers','script_templates','shifts','watcher_reports','results','activity_log','polling_stations','households','casework','influencers','constituencies','polling_divisions','campaigns','messages','captains','target_lists','support_history','profiles'];
+    const keys=['voters','contacts','drivers','rides','incidents','volunteers','tasks','donations','watchers','scriptTemplates','shifts','watcherReports','results','activityLog','pollingStations','households','casework','influencers','constituenciesDB','pollingDivisionsDB','campaigns','messages','captains','targetLists','supportHistory','users'];
     SB.channel('campaign-realtime')
     .on('postgres_changes',{event:'*',schema:'public'},payload=>{
         const tbl=payload.table;
@@ -1451,8 +1697,8 @@ async function handleSetup(e){
 }
 
 // ===== NAV =====
-function showView(v){document.querySelectorAll('.view').forEach(el=>el.classList.add('hidden'));const el=document.getElementById(v+'View');if(el){el.classList.remove('hidden');AS.currentView=v;document.querySelectorAll('.nav-item').forEach(i=>i.classList.toggle('active',i.dataset.view===v));const t={dashboard:'Dashboard',analytics:'Analytics',command:'Command Center',islands:'Island Management',constituencies:'Constituencies',voters:'Voter Database',contacts:'Contact Tracking',comms:'Communication Hub',canvassing:'Canvassing',gotv:'GOTV Tracking',captains:'Cell Captains',gotvRace:'GOTV Race',checkin:'Rapid Check-in',queue:'Contact Queue',dispatch:'Transportation',watchers:'Poll Watchers',incidents:'Incidents',results:'Results Tracking',volunteers:'Volunteers',shifts:'Shift Schedule',tasks:'Tasks',donations:'Donations',stations:'Voting Centers',households:'Households',casework:'Constituent Service',influencers:'Community Leaders',pdsManage:'Polling Stations',users:'Users',export:'Export/Import',activity:'Activity Log'};document.getElementById('viewTitle').textContent=t[v]||v;document.querySelectorAll('.mobile-quicknav button[data-qnav]').forEach(b=>b.classList.toggle('active',b.dataset.qnav===v));updateScopeBanner();refreshView(v);closeMobileSidebar();setTimeout(()=>{try{window.dispatchEvent(new Event('resize'))}catch(e){}},100)}}
-function refreshView(v){const m={dashboard:renderDashboard,analytics:renderAnalytics,command:renderCC,islands:renderIslands,constituencies:renderConsts,voters:renderVoters,contacts:renderContacts,comms:renderComms,canvassing:renderCanvassing,gotv:renderGOTV,captains:renderCaptains,gotvRace:renderGOTVRace,checkin:renderCheckin,queue:renderQueue,dispatch:renderDispatch,watchers:renderWatchers,incidents:renderIncidents,results:renderResults,volunteers:renderVols,shifts:renderShifts,tasks:renderTasks,donations:renderDonations,stations:renderStations,households:renderHouseholds,casework:renderCasework,influencers:renderInfluencers,pdsManage:renderPDsManage,users:renderUsers,activity:renderActivity};if(m[v])m[v]()}
+function showView(v){const gate={comms:'comms',export:'export',users:'credentials'};if(gate[v]&&!can(gate[v])){toast('Your role does not have access to that section','error');return}document.querySelectorAll('.view').forEach(el=>el.classList.add('hidden'));const el=document.getElementById(v+'View');if(el){el.classList.remove('hidden');AS.currentView=v;document.querySelectorAll('.nav-item').forEach(i=>i.classList.toggle('active',i.dataset.view===v));const t={dashboard:'Dashboard',analytics:'Analytics',command:'Command Center',islands:'Island Management',constituencies:'Constituencies',voters:'Voter Database',contacts:'Contact Tracking',comms:'Communication Hub',canvassing:'Canvassing',gotv:'GOTV Tracking',captains:'Cell Captains',gotvRace:'GOTV Race',overseas:'Overseas Voters',targetlists:'Target Lists',checkin:'Rapid Check-in',queue:'Contact Queue',dispatch:'Transportation',watchers:'Poll Watchers',incidents:'Incidents',results:'Results Tracking',volunteers:'Volunteers',shifts:'Shift Schedule',tasks:'Tasks',donations:'Donations',stations:'Voting Centers',households:'Households',casework:'Constituent Service',influencers:'Community Leaders',pdsManage:'Polling Stations',users:'Users',export:'Export/Import',activity:'Activity Log'};document.getElementById('viewTitle').textContent=t[v]||v;document.querySelectorAll('.mobile-quicknav button[data-qnav]').forEach(b=>b.classList.toggle('active',b.dataset.qnav===v));updateScopeBanner();refreshView(v);closeMobileSidebar();setTimeout(()=>{try{window.dispatchEvent(new Event('resize'))}catch(e){}},100)}}
+function refreshView(v){const m={dashboard:renderDashboard,analytics:renderAnalytics,command:renderCC,islands:renderIslands,constituencies:renderConsts,voters:renderVoters,contacts:renderContacts,comms:renderComms,canvassing:renderCanvassing,gotv:renderGOTV,captains:renderCaptains,gotvRace:renderGOTVRace,overseas:renderOverseas,targetlists:renderTargetlists,checkin:renderCheckin,queue:renderQueue,dispatch:renderDispatch,watchers:renderWatchers,incidents:renderIncidents,results:renderResults,volunteers:renderVols,shifts:renderShifts,tasks:renderTasks,donations:renderDonations,stations:renderStations,households:renderHouseholds,casework:renderCasework,influencers:renderInfluencers,pdsManage:renderPDsManage,users:renderUsers,activity:renderActivity};if(m[v])m[v]()}
 function setIslandFilter(i){
     AS.islandFilter=i;
     localStorage.setItem('islandScope',i);
@@ -1513,10 +1759,9 @@ function renderIslands(){const d=getData(),kv=d.voters.filter(v=>v.island==='st-
 function renderIslandChart(){const ctx=document.getElementById('islandCompareChart');if(!ctx)return;if(AS.charts.ic)AS.charts.ic.destroy();const d=getData(),k=d.voters.filter(v=>v.island==='st-kitts'),n=d.voters.filter(v=>v.island==='nevis');AS.charts.ic=new Chart(ctx,{type:'bar',data:{labels:['Solid','Soft','Reachable','Lost'],datasets:[{label:'St. Kitts',data:[k.filter(v=>v.category==='Solid').length,k.filter(v=>v.category==='Soft').length,k.filter(v=>v.category==='Reachable').length,k.filter(v=>v.category==='Lost').length],backgroundColor:'#1e3a5f'},{label:'Nevis',data:[n.filter(v=>v.category==='Solid').length,n.filter(v=>v.category==='Soft').length,n.filter(v=>v.category==='Reachable').length,n.filter(v=>v.category==='Lost').length],backgroundColor:'#059669'}]},options:{responsive:true,maintainAspectRatio:false}})}
 
 // CONSTITUENCIES
-function renderConsts(){const g=document.getElementById('fullConstituencyGrid'),d=getData();g.innerHTML=filteredConsts().map(c=>{const v=d.voters.filter(x=>x.constituencyId===c.id),s=v.filter(x=>x.category==='Solid').length,sf=v.filter(x=>x.category==='Soft').length,vt=v.filter(x=>x.hasVoted).length,pct=v.length>0?Math.round((s+sf)/v.length*100):0;return`<div class="constituency-card" onclick="showConstVoters('${c.id}')"><h4>${c.id} - ${c.name}</h4><p class="text-muted" style="font-size:.75rem;margin-bottom:.5rem">${c.island==='nevis'?'🌴 Nevis':'🏝️ St. Kitts'} • ${getPDsFor(c.id).length} PDs</p><div style="display:flex;gap:.375rem;margin-bottom:.5rem;flex-wrap:wrap"><span class="badge badge-solid">${s} Solid</span><span class="badge badge-soft">${sf} Soft</span><span class="badge badge-success">${vt} Voted</span></div><div class="progress-bar"><div class="progress-fill ${pct>=55?'success':pct>=45?'warning':'danger'}" style="width:${pct}%"></div></div><div style="font-size:.6875rem;color:var(--text-muted);margin-top:.375rem">${v.length} voters | ${pct}% support</div></div>`}).join('')}
 // VOTERS
 function renderVoters(){popConstDropdowns();filterVoters()}
-function filterVoters(){const sr=(document.getElementById('voterSearch')?.value||'').toLowerCase(),cf=document.getElementById('voterConstFilter')?.value||'',pf=document.getElementById('voterPDFilter')?.value||'',cat=document.getElementById('voterCatFilter')?.value||'',d=getData();let vs=filteredVoters(d);if(sr)vs=vs.filter(v=>v.firstName.toLowerCase().includes(sr)||v.lastName.toLowerCase().includes(sr)||v.voterId.toLowerCase().includes(sr)||(v.phone&&v.phone.includes(sr)));if(cf)vs=vs.filter(v=>v.constituencyId===cf);if(pf)vs=vs.filter(v=>v.pollingDivisionId===pf);if(cat)vs=vs.filter(v=>v.category===cat);document.getElementById('voterCount').textContent=`${vs.length} voters`;const tb=document.getElementById('voterTableBody'),pv=vs.slice(0,80);if(!pv.length){tb.innerHTML='<tr><td colspan="8" class="table-empty">No voters found</td></tr>';return}tb.innerHTML=pv.map(v=>{const pd=getPD(v.pollingDivisionId);return`<tr><td><strong>${v.firstName} ${v.lastName}</strong>${v.rideNeeded?' 🚗':''}${v.hasVoted?' ✅':''}</td><td><code style="font-size:.6875rem">${v.voterId}</code></td><td>${v.constituencyId}</td><td>${pd?pd.code.split('-')[1]:'-'}</td><td><span class="badge badge-${v.category.toLowerCase()}">${v.category}</span></td><td>${v.phone||'-'}</td><td>${v.contactCount}</td><td><button class="btn btn-xs btn-outline" onclick="viewVoterDetail('${v.id}')">👁</button> <button class="btn btn-xs btn-outline" onclick="editVoter('${v.id}')">✏️</button> <button class="btn btn-xs btn-success" onclick="quickMarkVoted('${v.id}')">✓</button></td></tr>`}).join('')}
+function filterVoters(){const sr=(document.getElementById('voterSearch')?.value||'').toLowerCase(),cf=document.getElementById('voterConstFilter')?.value||'',pf=document.getElementById('voterPDFilter')?.value||'',cat=document.getElementById('voterCatFilter')?.value||'',d=getData();let vs=filteredVoters(d);if(sr)vs=vs.filter(v=>v.firstName.toLowerCase().includes(sr)||v.lastName.toLowerCase().includes(sr)||v.voterId.toLowerCase().includes(sr)||(v.phone&&v.phone.includes(sr)));if(cf)vs=vs.filter(v=>v.constituencyId===cf);if(pf)vs=vs.filter(v=>v.pollingDivisionId===pf);if(cat)vs=vs.filter(v=>v.category===cat);const cls=document.getElementById('voterClassFilter')?.value||'';if(cls==='overseas')vs=vs.filter(v=>v.isOverseas);else if(cls==='outside')vs=vs.filter(v=>v.livesOutside);else if(cls==='resident')vs=vs.filter(v=>!v.livesOutside);document.getElementById('voterCount').textContent=`${vs.length} voters`;const tb=document.getElementById('voterTableBody'),pv=vs.slice(0,80);if(!pv.length){tb.innerHTML='<tr><td colspan="8" class="table-empty">No voters found</td></tr>';return}tb.innerHTML=pv.map(v=>{const pd=getPD(v.pollingDivisionId);return`<tr><td><strong>${v.firstName}${v.alias?' "'+v.alias+'"':''} ${v.lastName}</strong>${v.photo?' 📷':''}${v.rideNeeded?' 🚗':''}${v.isOverseas?' ✈️':''}${v.livesOutside?' 🏘️':''}${v.hasVoted?' ✅':''}</td><td><code style="font-size:.6875rem">${v.voterId}</code></td><td>${v.constituencyId}</td><td>${pd?pd.code.split('-')[1]:'-'}</td><td><span class="badge badge-${v.category.toLowerCase()}">${v.category}</span></td><td>${v.phone||'-'}</td><td>${v.contactCount}</td><td><button class="btn btn-xs btn-outline" onclick="viewVoterDetail('${v.id}')">👁</button> <button class="btn btn-xs btn-outline" onclick="editVoter('${v.id}')">✏️</button> <button class="btn btn-xs btn-success" onclick="quickMarkVoted('${v.id}')">✓</button></td></tr>`}).join('')}
 function quickMarkVoted(id){const d=getData(),v=d.voters.find(x=>x.id===id);if(!v)return;v.hasVoted=true;v.votedTime=new Date().toISOString();saveData(d);refreshView(AS.currentView);addActivity(`marked ${v.firstName} ${v.lastName} voted`,'✅');toast(`${v.firstName} voted!`,'success')}
 
 function viewVoterDetail(id){
@@ -1530,18 +1775,23 @@ function viewVoterDetail(id){
     const openCases=(CACHE.casework||[]).filter(c=>c.voterId===v.id&&c.status!=='Resolved'&&c.status!=='Closed');
     const allCases=(CACHE.casework||[]).filter(c=>c.voterId===v.id);
     document.getElementById('voterDetailContent').innerHTML=
-        '<div class="grid-2 mb-2"><div><h4 style="font-size:1.25rem">'+v.firstName+' '+v.lastName+'</h4><p class="text-muted" style="font-size:.8125rem">'+v.voterId+(v.dateOfBirth?' • DOB '+fDate(v.dateOfBirth):'')+(v.gender?' • '+v.gender:'')+'</p></div><div style="text-align:right">'+supportBadge(v.supportLevel||v.category)+(v.hasVoted?'<br><span class="badge badge-success mt-2">✓ VOTED</span>':'')+'</div></div>'+
-        '<div style="display:flex;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap"><button class="btn btn-sm btn-info" onclick="closeModal(\'voterDetailModal\');openCaseModal(\''+v.id+'\')">📋 Open Case</button>'+(v.phone?'<a href="https://wa.me/'+v.phone.replace(/\D/g,'')+'" target="_blank" class="btn btn-sm btn-success" style="text-decoration:none">💬 WhatsApp</a><a href="tel:'+v.phone+'" class="btn btn-sm btn-outline" style="text-decoration:none">📞 Call</a>':'')+'</div>'+
+        '<div style="display:flex;gap:1rem;margin-bottom:1rem;align-items:flex-start">'+(v.photo?'<img src="'+v.photo+'" style="width:80px;height:100px;object-fit:cover;border-radius:var(--radius-sm);border:1px solid var(--border);flex-shrink:0">':'<div style="width:80px;height:100px;border-radius:var(--radius-sm);border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:1.75rem;color:var(--text-muted);flex-shrink:0">🪪</div>')+
+        '<div style="flex:1"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div><h4 style="font-size:1.25rem;margin:0">'+voterDisplayName(v)+'</h4><p class="text-muted" style="font-size:.8125rem">'+v.voterId+(v.dateOfBirth?' • DOB '+fDate(v.dateOfBirth):'')+(v.gender?' • '+v.gender:'')+'</p></div><div style="text-align:right">'+supportBadge(v.supportLevel||v.category)+(v.hasVoted?'<br><span class="badge badge-success mt-2">✓ VOTED</span>':'')+'</div></div>'+
+        ((v.emotionalBloc||v.emotionalBlocSecondary)?'<div style="margin-top:.375rem">'+blocBadge(v.emotionalBloc)+(v.emotionalBlocSecondary?' '+blocBadge(v.emotionalBlocSecondary):'')+'</div>':'')+
+        '</div></div>'+
+        '<div style="display:flex;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap"><button class="btn btn-sm btn-info" onclick="closeModal(\'voterDetailModal\');openCaseModal(\''+v.id+'\')">📋 Open Case</button><button class="btn btn-sm btn-outline" onclick="startCanvassVoter(\''+v.id+'\')">🚪 Canvass</button>'+(v.phone?'<a href="https://wa.me/'+v.phone.replace(/\D/g,'')+'" target="_blank" class="btn btn-sm btn-success" style="text-decoration:none">💬 WhatsApp</a><a href="tel:'+v.phone+'" class="btn btn-sm btn-outline" style="text-decoration:none">📞 Call</a>':'')+'</div>'+
         '<div class="grid-2 mb-2" style="font-size:.8125rem"><div><strong>Const:</strong> '+v.constituencyId+'</div><div><strong>PD:</strong> '+(pd?pd.code:'-')+'</div><div><strong>Voting Center:</strong> '+(st?st.name:'-')+'</div><div><strong>Phone:</strong> '+(v.phone||'-')+'</div><div><strong>Email:</strong> '+(v.email||'-')+'</div><div><strong>Occupation:</strong> '+(v.occupation||'-')+'</div><div><strong>Address:</strong> '+(v.address||'-')+'</div><div><strong>Commitment:</strong> '+(v.commitment||'Unknown')+'</div></div>'+
         (hh?'<div class="profile-section"><h5>🏠 Household: '+hh.name+(v.householdRole?' ('+v.householdRole+')':'')+'</h5>'+(hhMembers.length?'<div style="display:flex;flex-wrap:wrap;gap:.25rem">'+hhMembers.map(m=>'<span class="badge badge-primary" style="cursor:pointer" onclick="closeModal(\'voterDetailModal\');viewVoterDetail(\''+m.id+'\')">'+m.firstName+' '+m.lastName+' '+supportBadge(m.supportLevel||m.category)+'</span>').join('')+'</div>':'<p class="text-muted" style="font-size:.75rem">No other members</p>')+'</div>':'')+
         (allCases.length?'<div class="profile-section"><h5>📋 Cases ('+openCases.length+' open / '+allCases.length+' total)</h5>'+allCases.slice(0,5).map(c=>{const sc={Open:'warning','In Progress':'info',Resolved:'success',Escalated:'danger',Closed:'neutral'};return '<div style="padding:.5rem;background:var(--card);border-radius:var(--radius-sm);margin-bottom:.25rem;font-size:.75rem;cursor:pointer" onclick="closeModal(\'voterDetailModal\');editCase(\''+c.id+'\')"><strong>'+c.title+'</strong> <span class="badge badge-'+(sc[c.status]||'neutral')+'" style="font-size:.625rem">'+c.status+'</span> <span class="text-muted">'+(c.category||'')+' • '+fDate(c.openedDate)+'</span></div>'}).join('')+'</div>':'')+
+        (v.isOverseas?'<div class="profile-section" style="border-left:3px solid var(--info)"><h5>✈️ Overseas Voter</h5><div style="font-size:.8125rem"><strong>Location:</strong> '+(v.overseasLocation||'-')+' • <strong>Status:</strong> '+returnBadge(v.returnStatus)+(v.expectedArrival?' • <strong>Arrives:</strong> '+fDate(v.expectedArrival):'')+(v.returnSponsor?' • <strong>Sponsor:</strong> '+v.returnSponsor:'')+(v.needsAirportPickup?' • 🛬 <strong>Needs airport pickup</strong>':'')+'</div></div>':'')+(v.livesOutside?'<div class="profile-section" style="border-left:3px solid var(--warning)"><h5>🏘️ Lives Outside Constituency</h5><div style="font-size:.8125rem">Registered in <strong>'+v.constituencyId+'</strong> but resides in <strong>'+(v.residenceLocation||'?')+'</strong>'+(v.residenceConstituency?' ('+v.residenceConstituency+')':'')+'</div></div>':'')+
         ((v.emotionalState||v.loveLanguage)?'<div class="profile-section"><h5>💭 Emotional Profile</h5>'+(v.emotionalState?'<span class="badge badge-info">'+v.emotionalState+'</span>':'')+(v.loveLanguage?'<span class="badge badge-purple">'+v.loveLanguage+'</span>':'')+'</div>':'')+
         (tribes.length?'<div class="profile-section"><h5>🏛️ Core Tribes</h5>'+tribes.map(t=>'<span class="badge badge-primary">'+t+'</span>').join('')+'</div>':'')+
         (comms.length?'<div class="profile-section"><h5>💬 Comm Preferences</h5>'+comms.map(c=>'<span class="badge badge-soft">'+c+'</span>').join('')+'</div>':'')+
         (v.triggerIssue?'<div class="profile-section"><h5>🔥 Trigger Issue</h5><p style="font-size:.8125rem">'+v.triggerIssue+'</p></div>':'')+
         (v.conversionStrategy?'<div class="profile-section"><h5>🎯 Conversion Strategy</h5><p style="font-size:.8125rem">'+v.conversionStrategy+'</p></div>':'')+
         (v.notes?'<div class="profile-section"><h5>📝 Notes</h5><p style="font-size:.8125rem">'+v.notes+'</p></div>':'')+
-        '<h5 style="margin:1rem 0 .5rem;font-size:.875rem">Contacts ('+cts.length+')</h5><div class="contact-history">'+(cts.length===0?'<p class="text-muted">No contacts</p>':cts.slice(0,5).map(c=>'<div class="contact-history-item"><div style="display:flex;justify-content:space-between"><span><strong>'+c.method+'</strong> - '+c.response+'</span><span class="text-muted">'+fDate(c.createdAt)+'</span></div>'+(c.categoryChange?'<div style="color:var(--purple);font-size:.6875rem">'+c.categoryChange+'</div>':'')+'</div>').join(''))+'</div>';
+        '<h5 style="margin:1rem 0 .5rem;font-size:.875rem">Contacts ('+cts.length+')</h5><div class="contact-history">'+(cts.length===0?'<p class="text-muted">No contacts</p>':cts.slice(0,5).map(c=>'<div class="contact-history-item"><div style="display:flex;justify-content:space-between"><span><strong>'+c.method+'</strong> - '+c.response+'</span><span class="text-muted">'+fDate(c.createdAt)+'</span></div>'+(c.categoryChange?'<div style="color:var(--purple);font-size:.6875rem">'+c.categoryChange+'</div>':'')+'</div>').join(''))+'</div>'+
+        (function(){const hist=voterHistory(id);if(!hist.length)return '';return '<div style="display:flex;justify-content:space-between;align-items:center;margin:1rem 0 .5rem"><h5 style="font-size:.875rem;margin:0">📈 Support History ('+hist.length+')</h5><button class="btn btn-xs btn-outline requires-export" onclick="exportVoterHistory(\''+id+'\')">📤 Export</button></div><div class="contact-history">'+hist.slice().reverse().slice(0,12).map(h=>'<div class="contact-history-item"><div style="display:flex;justify-content:space-between"><span>'+(h.supportLevel?supportBadge(h.supportLevel):'')+' <span class="text-muted" style="font-size:.6875rem">'+(h.status||'')+'</span></span><span class="text-muted" style="font-size:.6875rem">'+fDate(h.recordedAt)+'</span></div>'+(h.note?'<div style="font-size:.6875rem;color:var(--text-muted)">'+h.note+(h.recordedBy?' — '+h.recordedBy:'')+'</div>':'')+'</div>').join('')+'</div>';})();
     document.getElementById('voterDetailEdit').onclick=()=>{closeModal('voterDetailModal');editVoter(id)};
     openModal('voterDetailModal');
 }
@@ -1553,6 +1803,9 @@ function editVoter(id){
     document.getElementById('editVoterId').value=v.id;
     document.getElementById('voterFirst').value=v.firstName||'';
     document.getElementById('voterLast').value=v.lastName||'';
+    document.getElementById('voterMiddle').value=v.middleName||'';
+    document.getElementById('voterAlias').value=v.alias||'';
+    setVoterPhoto(v.photo||'');
     document.getElementById('voterVoterId').value=v.voterId||'';
     document.getElementById('voterDob').value=v.dateOfBirth||'';
     document.getElementById('voterGender').value=v.gender||'';
@@ -1573,17 +1826,32 @@ function editVoter(id){
     document.getElementById('voterOccupation').value=v.occupation||'';
     document.getElementById('voterAddress').value=v.address||'';
     document.getElementById('voterSupportLevel').value=v.supportLevel||'';
-    document.getElementById('voterCategory').value=v.category||'Reachable';
+    document.getElementById('voterBloc').value=v.emotionalBloc||'';
+    document.getElementById('voterBloc2').value=v.emotionalBlocSecondary||'';
+    renderBlocInsight();
     document.getElementById('voterCommitment').value=v.commitment||'';
     document.getElementById('voterRide').value=v.rideNeeded?'yes':'no';
     document.getElementById('voterTrigger').value=v.triggerIssue||'';
     document.getElementById('voterStrategy').value=v.conversionStrategy||'';
     document.getElementById('voterNotes').value=v.notes||'';
+    document.getElementById('voterOverseas').checked=!!v.isOverseas;
+    document.getElementById('voterOverseasLoc').value=v.overseasLocation||'';
+    document.getElementById('voterReturnStatus').value=v.returnStatus||'Unknown';
+    document.getElementById('voterExpectedArrival').value=v.expectedArrival||'';
+    document.getElementById('voterReturnSponsor').value=v.returnSponsor||'';
+    document.getElementById('voterAirportPickup').checked=!!v.needsAirportPickup;
+    document.getElementById('voterLivesOutside').checked=!!v.livesOutside;
+    document.getElementById('voterResidenceLoc').value=v.residenceLocation||'';
+    popResidenceConst();
+    document.getElementById('voterResidenceConst').value=v.residenceConstituency||'';
+    const rrc=document.getElementById('resRegConst');if(rrc)rrc.textContent=v.constituencyId||'this constituency';
+    toggleResidenceFields();
+    toggleOverseasFields();
     renderChips('voterEmotionalChips',EMOTIONAL_STATES,v.emotionalState?[v.emotionalState]:[],true);
     renderChips('voterLoveChips',LOVE_LANGUAGES,v.loveLanguage?[v.loveLanguage]:[],true);
     renderChips('voterTribeChips',CORE_TRIBES,csvToArr(v.coreTribes),false);
     renderChips('voterCommChips',COMM_STYLES,csvToArr(v.commStyles),false);
-    document.getElementById('deleteVoterBtn').classList.remove('hidden');
+    if(can('deleteVoters'))document.getElementById('deleteVoterBtn').classList.remove('hidden');
     switchVoterTab('basic');
     openModal('voterModal');
 }
@@ -1592,6 +1860,9 @@ function saveVoter(){
     const id=document.getElementById('editVoterId').value;
     const fn=document.getElementById('voterFirst').value.trim();
     const ln=document.getElementById('voterLast').value.trim();
+    const mid=document.getElementById('voterMiddle').value.trim()||null;
+    const alias=document.getElementById('voterAlias').value.trim()||null;
+    const photo=document.getElementById('voterPhoto').value||null;
     const vi=document.getElementById('voterVoterId').value.trim();
     const ci=document.getElementById('voterConst').value;
     const pi=document.getElementById('voterPD').value;
@@ -1603,7 +1874,9 @@ function saveVoter(){
     const gen=document.getElementById('voterGender').value;
     const addr=document.getElementById('voterAddress').value.trim();
     const sl=document.getElementById('voterSupportLevel').value;
-    const cat=document.getElementById('voterCategory').value;
+    const cat=deriveCategory(sl);
+    const bloc=document.getElementById('voterBloc').value||null;
+    const bloc2=document.getElementById('voterBloc2').value||null;
     const rn=document.getElementById('voterRide').value==='yes';
     const cmt=document.getElementById('voterCommitment').value;
     const trg=document.getElementById('voterTrigger').value.trim();
@@ -1612,19 +1885,42 @@ function saveVoter(){
     const sid=document.getElementById('voterStation').value||null;
     const hhId=document.getElementById('voterHousehold').value||null;
     const hhRole=document.getElementById('voterHHRole').value||null;
+    const isOverseas=document.getElementById('voterOverseas').checked;
+    const overseasLoc=document.getElementById('voterOverseasLoc').value.trim()||null;
+    const returnStatus=isOverseas?document.getElementById('voterReturnStatus').value:null;
+    const expectedArrival=document.getElementById('voterExpectedArrival').value||null;
+    const returnSponsor=document.getElementById('voterReturnSponsor').value.trim()||null;
+    const airportPickup=isOverseas&&document.getElementById('voterAirportPickup').checked;
+    const livesOutside=document.getElementById('voterLivesOutside').checked;
+    const residenceLoc=livesOutside?(document.getElementById('voterResidenceLoc').value.trim()||null):null;
+    const residenceConst=livesOutside?(document.getElementById('voterResidenceConst').value||null):null;
     const emo=getSelectedChips('voterEmotionalChips')[0]||null;
     const love=getSelectedChips('voterLoveChips')[0]||null;
     const tribes=arrToCsv(getSelectedChips('voterTribeChips'));
     const comms=arrToCsv(getSelectedChips('voterCommChips'));
     const d=getData(),c=getC(ci),island=c?c.island:'st-kitts';
-    const update={firstName:fn,lastName:ln,voterId:vi,constituencyId:ci,pollingDivisionId:pi,pollingStationId:sid,householdId:hhId,householdRole:hhRole,island:island,phone:ph,email:em,occupation:occ,dateOfBirth:dob,gender:gen,category:cat,supportLevel:sl,address:addr,rideNeeded:rn,commitment:cmt,triggerIssue:trg,conversionStrategy:strat,notes:notes,emotionalState:emo,loveLanguage:love,coreTribes:tribes,commStyles:comms};
+    const update={firstName:fn,lastName:ln,middleName:mid,alias:alias,photo:photo,voterId:vi,constituencyId:ci,pollingDivisionId:pi,pollingStationId:sid,householdId:hhId,householdRole:hhRole,island:island,phone:ph,email:em,occupation:occ,dateOfBirth:dob,gender:gen,category:cat,supportLevel:sl,emotionalBloc:bloc,emotionalBlocSecondary:bloc2,address:addr,rideNeeded:rn,commitment:cmt,triggerIssue:trg,conversionStrategy:strat,notes:notes,emotionalState:emo,loveLanguage:love,coreTribes:tribes,commStyles:comms,isOverseas:isOverseas,overseasLocation:overseasLoc,returnStatus:returnStatus,expectedArrival:expectedArrival,returnSponsor:returnSponsor,needsAirportPickup:airportPickup,livesOutside:livesOutside,residenceLocation:residenceLoc,residenceConstituency:residenceConst};
     if(id){
         const v=d.voters.find(x=>x.id===id);
-        if(v){const oc=v.category;Object.assign(v,update);if(oc!==cat)v.previousCategory=oc}
+        if(v){const oc=v.category;const oldSL=v.supportLevel;Object.assign(v,update);if(oc!==cat)v.previousCategory=oc;if(oldSL!==sl)logSupportHistory(id,sl,emo,'updated','Support changed from '+(oldSL||'—')+' to '+(sl||'—'))}
         addActivity('updated '+fn+' '+ln,'✏️');
     }else{
-        d.voters.push(Object.assign({id:genId(),previousCategory:cat,rideStatus:rn?'pending':null,hasVoted:false,votedTime:null,lastContactDate:null,contactCount:0,snoozedUntil:null,createdAt:new Date().toISOString()},update));
+        const nv=Object.assign({id:genId(),previousCategory:cat,rideStatus:rn?'pending':null,hasVoted:false,votedTime:null,lastContactDate:null,contactCount:0,snoozedUntil:null,createdAt:new Date().toISOString()},update);
+        d.voters.push(nv);
+        logSupportHistory(nv.id,sl,emo,'created','Initial record');
         addActivity('added '+fn+' '+ln,'👤');
+    }
+    // Airport pickup → create a dispatch ride if one doesn't already exist
+    if(airportPickup){
+        const savedVoter=id?d.voters.find(x=>x.id===id):d.voters[d.voters.length-1];
+        if(savedVoter){
+            const existing=(d.rides||[]).find(r=>r.voterId===savedVoter.id&&r.pickupType==='airport');
+            if(!existing){
+                if(!d.rides)d.rides=[];
+                d.rides.push({id:genId(),voterId:savedVoter.id,voterName:fn+' '+ln,pickup:'RLB Airport / Vance Amory Airport',pickupType:'airport',destination:overseasLoc?('Home — '+savedVoter.constituencyId):savedVoter.constituencyId,status:'pending',driverId:null,notes:'Airport pickup for overseas voter'+(expectedArrival?' — arrives '+expectedArrival:''),scheduledTime:expectedArrival||null,createdAt:new Date().toISOString()});
+                addActivity('created airport pickup for '+fn+' '+ln,'🛬');
+            }
+        }
     }
     saveData(d);
     closeModal('voterModal');
@@ -1633,16 +1929,28 @@ function saveVoter(){
     toast(id?'Updated':'Added','success');
 }
 
+function openAddVoter(){
+    clearVoterForm();
+    // ensure constituency dropdown is populated and respects island scope
+    const vc=document.getElementById('voterConst');
+    if(vc)vc.innerHTML='<option value="">Select...</option>'+filteredConsts().map(c=>'<option value="'+c.id+'">'+c.id+' - '+c.name+'</option>').join('');
+    popResidenceConst();
+    switchVoterTab('basic');
+    openModal('voterModal');
+}
 function clearVoterForm(){
     document.getElementById('voterModalTitle').textContent='Add Voter';
-    ['editVoterId','voterFirst','voterLast','voterVoterId','voterPhone','voterEmail','voterOccupation','voterDob','voterAddress','voterTrigger','voterStrategy','voterNotes'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});
+    ['editVoterId','voterFirst','voterLast','voterMiddle','voterAlias','voterVoterId','voterPhone','voterEmail','voterOccupation','voterDob','voterAddress','voterTrigger','voterStrategy','voterNotes'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});
+    setVoterPhoto('');
+    const vb=document.getElementById('voterBloc');if(vb)vb.value='';
+    const vb2=document.getElementById('voterBloc2');if(vb2)vb2.value='';
+    renderBlocInsight();
     const vc=document.getElementById('voterConst');if(vc)vc.value='';
     const vpd=document.getElementById('voterPD');if(vpd)vpd.innerHTML='<option value="">Select const first</option>';
     const vst=document.getElementById('voterStation');if(vst)vst.innerHTML='<option value="">-</option>';
     const vhh=document.getElementById('voterHousehold');if(vhh)vhh.innerHTML='<option value="">-</option>';
     const vhr=document.getElementById('voterHHRole');if(vhr)vhr.value='';
     const vg=document.getElementById('voterGender');if(vg)vg.value='';
-    const vcat=document.getElementById('voterCategory');if(vcat)vcat.value='Reachable';
     const vsl=document.getElementById('voterSupportLevel');if(vsl)vsl.value='';
     const vr=document.getElementById('voterRide');if(vr)vr.value='no';
     const vcmt=document.getElementById('voterCommitment');if(vcmt)vcmt.value='';
@@ -1651,7 +1959,82 @@ function clearVoterForm(){
     renderChips('voterTribeChips',CORE_TRIBES,[],false);
     renderChips('voterCommChips',COMM_STYLES,[],false);
     const db=document.getElementById('deleteVoterBtn');if(db)db.classList.add('hidden');
+    const ov=document.getElementById('voterOverseas');if(ov)ov.checked=false;
+    ['voterOverseasLoc','voterExpectedArrival','voterReturnSponsor'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});
+    const vrs=document.getElementById('voterReturnStatus');if(vrs)vrs.value='Unknown';
+    const vap=document.getElementById('voterAirportPickup');if(vap)vap.checked=false;
+    const vlo=document.getElementById('voterLivesOutside');if(vlo)vlo.checked=false;
+    const vrl=document.getElementById('voterResidenceLoc');if(vrl)vrl.value='';
+    popResidenceConst();
+    toggleResidenceFields();
+    toggleOverseasFields();
     switchVoterTab('basic');
+}
+function toggleOverseasFields(){
+    const on=document.getElementById('voterOverseas').checked;
+    document.getElementById('overseasFields').classList.toggle('hidden',!on);
+}
+function toggleResidenceFields(){
+    const on=document.getElementById('voterLivesOutside').checked;
+    document.getElementById('residenceFields').classList.toggle('hidden',!on);
+}
+function popResidenceConst(){
+    const sel=document.getElementById('voterResidenceConst');if(!sel)return;
+    const cur=sel.value;
+    sel.innerHTML='<option value="">Unknown</option>'+CONSTITUENCIES.map(c=>'<option value="'+c.id+'">'+c.id+' - '+c.name+'</option>').join('');
+    sel.value=cur;
+}
+// ===== VOTER PHOTO (passport-size, resized client-side) =====
+function handleVoterPhoto(input){
+    const file=input.files&&input.files[0];if(!file)return;
+    const reader=new FileReader();
+    reader.onload=e=>{
+        const img=new Image();
+        img.onload=()=>{
+            // Resize to passport-ish thumbnail (max 300px wide), keep aspect
+            const maxW=300,scale=Math.min(1,maxW/img.width);
+            const w=Math.round(img.width*scale),h=Math.round(img.height*scale);
+            const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
+            canvas.getContext('2d').drawImage(img,0,0,w,h);
+            const dataUrl=canvas.toDataURL('image/jpeg',0.75);
+            setVoterPhoto(dataUrl);
+        };
+        img.src=e.target.result;
+    };
+    reader.readAsDataURL(file);
+    input.value='';
+}
+function setVoterPhoto(dataUrl){
+    document.getElementById('voterPhoto').value=dataUrl||'';
+    const prev=document.getElementById('voterPhotoPreview');
+    const del=document.getElementById('voterPhotoDelBtn');
+    if(dataUrl){prev.innerHTML='<img src="'+dataUrl+'" style="width:100%;height:100%;object-fit:cover">';del.style.display='inline-block'}
+    else{prev.innerHTML='🪪';del.style.display='none'}
+}
+function deleteVoterPhoto(){setVoterPhoto('')}
+async function deleteVoter(){
+    if(!can('deleteVoters')){toast('Your role cannot delete voter records','error');return}
+    const id=document.getElementById('editVoterId').value;
+    if(!id)return;
+    const d=getData(),v=d.voters.find(x=>x.id===id);
+    if(!v)return;
+    if(!confirm('Delete '+v.firstName+' '+v.lastName+'? This cannot be undone.'))return;
+    d.voters=d.voters.filter(x=>x.id!==id);
+    try{if(SB)await SB.from('voters').delete().eq('id',id)}catch(e){console.error(e)}
+    saveData(d);
+    addActivity('deleted voter '+v.firstName+' '+v.lastName,'🗑️');
+    closeModal('voterModal');filterVoters();toast('Voter deleted','success');
+}
+// ===== EMOTIONAL BLOC INSIGHT PANEL =====
+function renderBlocInsight(){
+    const b=document.getElementById('voterBloc').value;
+    const panel=document.getElementById('blocInsight');
+    if(!b||!EMOTIONAL_BLOCS[b]){panel.style.display='none';return}
+    const d=EMOTIONAL_BLOCS[b];
+    panel.style.display='block';
+    panel.style.background=d.color+'18';
+    panel.style.borderLeft='3px solid '+d.color;
+    panel.innerHTML='<strong>'+d.icon+' '+b+'</strong> — <em>'+d.emotion+'</em><br><strong>Wants:</strong> '+d.desire+'<br><strong>Responds to:</strong> '+d.respond+'<br><strong>Messaging:</strong> '+d.tone;
 }
 
 function switchVoterTab(tab){
@@ -1880,8 +2263,9 @@ function shiftWeekNav(d){AS.shiftWeekOffset+=d;renderShifts()}
 function saveShift(){const dt=document.getElementById('shiftDate').value,st=document.getElementById('shiftStart').value,en=document.getElementById('shiftEnd').value,rl=document.getElementById('shiftRole').value,lc=document.getElementById('shiftLocation').value.trim(),as=document.getElementById('shiftAssignee').value;if(!dt||!st||!en){toast('Fill required','error');return}const d=getData();d.shifts.push({id:genId(),date:dt,start:st,end:en,role:rl,location:lc,assignee:as||null,createdAt:new Date().toISOString()});saveData(d);closeModal('shiftModal');document.getElementById('shiftDate').value='';document.getElementById('shiftStart').value='';document.getElementById('shiftEnd').value='';renderShifts();addActivity(`added shift: ${rl} on ${dt}`,'📅');toast('Added','success')}
 
 // TASKS
-function renderTasks(){const d=getData();document.getElementById('taskTotal').textContent=d.tasks.length;document.getElementById('taskPending').textContent=d.tasks.filter(t=>t.status==='Pending').length;document.getElementById('taskInProgress').textContent=d.tasks.filter(t=>t.status==='In Progress').length;document.getElementById('taskCompleted').textContent=d.tasks.filter(t=>t.status==='Completed').length;const sel=document.getElementById('taskAssignee');sel.innerHTML='<option value="">Unassigned</option>'+d.volunteers.filter(v=>v.status==='Active').map(v=>`<option value="${v.id}">${v.firstName} ${v.lastName}</option>`).join('');const tb=document.getElementById('taskTableBody');if(!d.tasks.length){tb.innerHTML='<tr><td colspan="6" class="table-empty">No tasks</td></tr>';return}tb.innerHTML=d.tasks.sort((a,b)=>{const o={Urgent:0,High:1,Medium:2,Low:3};return(o[a.priority]||3)-(o[b.priority]||3)}).map(t=>{const v=d.volunteers.find(x=>x.id===t.assignee);const pc=t.priority==='Urgent'?'danger':t.priority==='High'?'warning':t.priority==='Medium'?'info':'neutral';const sc=t.status==='Completed'?'success':t.status==='In Progress'?'info':'neutral';return`<tr><td><strong>${t.title}</strong>${t.description?`<br><span class="text-muted" style="font-size:.6875rem">${t.description.substring(0,50)}</span>`:''}</td><td>${v?v.firstName+' '+v.lastName:'<span class="text-muted">-</span>'}</td><td><span class="badge badge-${pc}">${t.priority}</span></td><td>${t.dueDate||'-'}</td><td><span class="badge badge-${sc}">${t.status}</span></td><td><button class="btn btn-xs btn-outline" onclick="cycleTask('${t.id}')">${t.status==='Pending'?'▶':'✓'}</button></td></tr>`}).join('')}
-function saveTask(){const ti=document.getElementById('taskTitle').value.trim(),ds=document.getElementById('taskDesc').value.trim(),pr=document.getElementById('taskPriority').value,du=document.getElementById('taskDue').value,as=document.getElementById('taskAssignee').value;if(!ti){toast('Fill title','error');return}const d=getData();d.tasks.push({id:genId(),title:ti,description:ds,priority:pr,dueDate:du,assignee:as||null,status:'Pending',createdAt:new Date().toISOString()});saveData(d);closeModal('taskModal');document.getElementById('taskTitle').value='';document.getElementById('taskDesc').value='';renderTasks();addActivity(`added task: ${ti}`,'📝');toast('Added','success')}
+function renderTasks(){const d=getData();document.getElementById('taskTotal').textContent=d.tasks.length;document.getElementById('taskPending').textContent=d.tasks.filter(t=>t.status==='Pending').length;document.getElementById('taskInProgress').textContent=d.tasks.filter(t=>t.status==='In Progress').length;document.getElementById('taskCompleted').textContent=d.tasks.filter(t=>t.status==='Completed').length;const sel=document.getElementById('taskAssignee');sel.innerHTML='<option value="">Unassigned</option>'+d.volunteers.filter(v=>v.status==='Active').map(v=>`<option value="${v.id}">${v.firstName} ${v.lastName}</option>`).join('');const bySel=document.getElementById('taskAssignedBy');if(bySel){const cur=bySel.value;const opts=(CACHE.users||[]).map(u=>`<option value="${u.id}">${u.firstName} ${u.lastName}</option>`).join('')+d.volunteers.filter(v=>v.status==='Active').map(v=>`<option value="vol:${v.id}">${v.firstName} ${v.lastName} (vol)</option>`).join('');bySel.innerHTML='<option value="">— Select —</option>'+opts;if(AS.currentUser&&!cur)bySel.value=AS.currentUser.id;else bySel.value=cur}const tb=document.getElementById('taskTableBody');if(!d.tasks.length){tb.innerHTML='<tr><td colspan="7" class="table-empty">No tasks</td></tr>';return}tb.innerHTML=d.tasks.sort((a,b)=>{const o={Urgent:0,High:1,Medium:2,Low:3};return(o[a.priority]||3)-(o[b.priority]||3)}).map(t=>{const v=d.volunteers.find(x=>x.id===t.assignee);const pc=t.priority==='Urgent'?'danger':t.priority==='High'?'warning':t.priority==='Medium'?'info':'neutral';const sc=t.status==='Completed'?'success':t.status==='In Progress'?'info':'neutral';return`<tr><td><strong>${t.title}</strong>${t.description?`<br><span class="text-muted" style="font-size:.6875rem">${t.description.substring(0,50)}</span>`:''}</td><td>${v?v.firstName+' '+v.lastName:'<span class="text-muted">-</span>'}</td><td>${taskAssignerName(t.assignedBy)}</td><td><span class="badge badge-${pc}">${t.priority}</span></td><td>${t.dueDate||'-'}</td><td><span class="badge badge-${sc}">${t.status}</span></td><td><button class="btn btn-xs btn-outline" onclick="cycleTask('${t.id}')">${t.status==='Pending'?'▶':'✓'}</button></td></tr>`}).join('')}
+function taskAssignerName(by){if(!by)return '<span class="text-muted">-</span>';if(by.startsWith('vol:')){const v=(getData().volunteers||[]).find(x=>x.id===by.slice(4));return v?v.firstName+' '+v.lastName:'-'}const u=(CACHE.users||[]).find(x=>x.id===by);return u?u.firstName+' '+u.lastName:'-'}
+function saveTask(){const ti=document.getElementById('taskTitle').value.trim(),ds=document.getElementById('taskDesc').value.trim(),pr=document.getElementById('taskPriority').value,du=document.getElementById('taskDue').value,as=document.getElementById('taskAssignee').value,by=document.getElementById('taskAssignedBy').value;if(!ti){toast('Fill title','error');return}const d=getData();d.tasks.push({id:genId(),title:ti,description:ds,priority:pr,dueDate:du,assignee:as||null,assignedBy:by||(AS.currentUser?AS.currentUser.id:null),status:'Pending',createdAt:new Date().toISOString()});saveData(d);closeModal('taskModal');document.getElementById('taskTitle').value='';document.getElementById('taskDesc').value='';renderTasks();addActivity(`added task: ${ti}`,'📝');toast('Added','success')}
 function cycleTask(id){const d=getData(),t=d.tasks.find(x=>x.id===id);if(!t)return;const cycle={Pending:'In Progress','In Progress':'Completed',Completed:'Pending'};t.status=cycle[t.status]||'Pending';saveData(d);renderTasks();toast(`${t.title}: ${t.status}`,'info')}
 
 // DONATIONS
@@ -1976,7 +2360,7 @@ function genVoters(){
 }
 
 // EXPORT/IMPORT
-function exportVotersCSV(){const d=getData(),h='firstName,lastName,voterId,constituency,pd,island,phone,address,category,commitment,hasVoted,contactCount\n',rows=d.voters.map(v=>`${v.firstName},${v.lastName},${v.voterId},${v.constituencyId},${v.pollingDivisionId},${v.island},${v.phone||''},${(v.address||'').replace(/,/g,' ')},${v.category},${v.commitment||''},${v.hasVoted},${v.contactCount}`).join('\n');downloadFile('voters_export.csv',h+rows,'text/csv');addActivity('exported voters CSV','📤');toast('Exported','success')}
+function exportVotersCSV(){if(!can('export')){toast('Your role cannot export data','error');return}const d=getData(),h='firstName,lastName,voterId,constituency,pd,island,phone,address,category,commitment,hasVoted,contactCount\n',rows=d.voters.map(v=>`${v.firstName},${v.lastName},${v.voterId},${v.constituencyId},${v.pollingDivisionId},${v.island},${v.phone||''},${(v.address||'').replace(/,/g,' ')},${v.category},${v.commitment||''},${v.hasVoted},${v.contactCount}`).join('\n');downloadFile('voters_export.csv',h+rows,'text/csv');addActivity('exported voters CSV','📤');toast('Exported','success')}
 function exportContactsCSV(){const d=getData(),h='date,voter,method,response,categoryChange,notes\n',rows=d.contacts.map(c=>{const v=d.voters.find(x=>x.id===c.voterId);return`${c.createdAt},${v?v.firstName+' '+v.lastName:'Unknown'},${c.method},${c.response},${c.categoryChange||''},${(c.notes||'').replace(/,/g,' ')}`}).join('\n');downloadFile('contacts_export.csv',h+rows,'text/csv');toast('Exported','success')}
 function exportGOTVList(){const d=getData(),sup=d.voters.filter(v=>v.category==='Solid'||v.category==='Soft'),h='firstName,lastName,voterId,constituency,pd,phone,category,commitment,hasVoted,rideNeeded,rideStatus\n',rows=sup.map(v=>`${v.firstName},${v.lastName},${v.voterId},${v.constituencyId},${v.pollingDivisionId},${v.phone||''},${v.category},${v.commitment||''},${v.hasVoted},${v.rideNeeded},${v.rideStatus||''}`).join('\n');downloadFile('gotv_list.csv',h+rows,'text/csv');toast('Exported','success')}
 function exportFullBackup(){const d=getData();downloadFile('campaign_backup_v8.json',JSON.stringify(d,null,2),'application/json');addActivity('full backup exported','💾');toast('Backup exported','success')}
@@ -2024,7 +2408,15 @@ function renderDashboard(){
         kpiCard(vot.toLocaleString(),'Voted','var(--purple)',turnout+'% of supporters')+
         kpiCard(openCases.toLocaleString(),'Open Cases','var(--danger)','constituent service');
     // Win probability
-    const wp=vs.length>0?Math.round((counts.Strong*.95+counts.Medium*.8+counts.Soft*.65+counts.Undecided*.3)/vs.length*100):0;
+    // Win projection. Overseas voters count at a reduced weight based on return likelihood
+    // (an unconfirmed overseas supporter is far less certain to actually cast a ballot).
+    let wpScore=0;
+    vs.forEach(v=>{
+        const base={Strong:.95,Medium:.8,Soft:.65,Undecided:.3,Opposition:0,Unknown:.1}[supportOf(v)]||0;
+        const mult=v.isOverseas?(RETURN_WEIGHT[v.returnStatus||'Unknown']!==undefined?RETURN_WEIGHT[v.returnStatus||'Unknown']:0.1):1;
+        wpScore+=base*mult;
+    });
+    const wp=vs.length>0?Math.round(wpScore/vs.length*100):0;
     document.getElementById('winProbability').textContent=wp+'%';
     document.getElementById('winBar').style.width=Math.min(wp,100)+'%';
     document.getElementById('votedCount').textContent=vot.toLocaleString();
@@ -2043,6 +2435,24 @@ function renderDashboard(){
     // GOTV funnel
     const funnelBase=vs.length,funnelSup=supporters,funnelContacted=supForTurnout.filter(v=>(v.contactCount||0)>0).length,funnelCommitted=supForTurnout.filter(v=>['Definite','Likely'].includes(v.commitment)).length,funnelVoted=vot;
     Plotly.react('dashFunnel',[{type:'funnel',y:['Total Base','Supporters','Contacted','Committed','Voted'],x:[funnelBase,funnelSup,funnelContacted,funnelCommitted,funnelVoted],marker:{color:['#1e3a5f','#0284c7','#0891b2','#059669','#7c3aed']},textinfo:'value+percent initial'}],Object.assign({margin:{t:20,r:15,b:20,l:80}},plotlyTheme()),PLOTLY_CONFIG);
+    // Overseas pipeline summary (only show if there are overseas voters)
+    const ov=vs.filter(v=>v.isOverseas);
+    const ovCard=document.getElementById('dashOverseasCard');
+    if(ov.length&&ovCard){
+        ovCard.style.display='';
+        const ovSup=ov.filter(v=>['Strong','Medium','Soft'].includes(supportOf(v)));
+        const conf=ov.filter(v=>['Confirmed Coming','Booked','Arrived'].includes(v.returnStatus)).length;
+        const arrived=ov.filter(v=>v.returnStatus==='Arrived').length;
+        const pickups=ov.filter(v=>v.needsAirportPickup).length;
+        document.getElementById('dashOverseasPipeline').innerHTML=
+            '<div class="stats-grid" style="margin-bottom:.5rem">'+
+            kpiCard(ov.length.toLocaleString(),'Overseas','var(--primary)')+
+            kpiCard(ovSup.length.toLocaleString(),'Supporters','var(--success)')+
+            kpiCard(conf.toLocaleString(),'Confirmed Returning','var(--info)')+
+            kpiCard(arrived.toLocaleString(),'Arrived','var(--purple)')+
+            kpiCard(pickups.toLocaleString(),'Need Pickup','var(--warning)')+
+            '</div>';
+    }else if(ovCard){ovCard.style.display='none'}
     renderDashPDs();popConstDropdowns();
 }
 function kpiCard(value,label,color,sub){
@@ -2102,6 +2512,18 @@ function renderAnalytics(){
     const cwKeys=Object.keys(cwCat).sort((a,b)=>cwCat[b]-cwCat[a]);
     Plotly.react('anCasework',[{type:'bar',orientation:'h',y:cwKeys.reverse(),x:cwKeys.map(k=>cwCat[k]),marker:{color:'#1e3a5f'}}],Object.assign({margin:{t:20,r:15,b:40,l:140}},plotlyTheme()),PLOTLY_CONFIG);
     renderConstPerf(d);
+    renderSupportTrend();
+}
+function renderSupportTrend(){
+    const el=document.getElementById('anSupportTrend');if(!el)return;
+    const hist=(CACHE.supportHistory||[]);
+    if(!hist.length){Plotly.react('anSupportTrend',[],Object.assign({annotations:[{text:'No support history yet — changes will appear here as you canvass and update voters',showarrow:false,font:{size:13,color:'#94a3b8'}}]},plotlyTheme()),PLOTLY_CONFIG);return}
+    // 12 weekly buckets
+    const weeks=[];for(let i=11;i>=0;i--){const d=new Date(Date.now()-i*7*864e5);weeks.push(d)}
+    const labels=weeks.map(d=>d.toLocaleDateString('en',{month:'short',day:'numeric'}));
+    const levels=['Strong','Medium','Soft','Undecided','Opposition'];
+    const traces=levels.map(lv=>({type:'scatter',mode:'lines+markers',name:lv,x:labels,y:weeks.map((wStart,i)=>{const wEnd=new Date(wStart.getTime()+7*864e5);return hist.filter(h=>{const t=new Date(h.recordedAt);return h.supportLevel===lv&&t>=wStart&&t<wEnd}).length}),line:{color:SUPPORT_PALETTE[lv]}}));
+    Plotly.react('anSupportTrend',traces,Object.assign({legend:{orientation:'h',y:-0.2}},plotlyTheme()),PLOTLY_CONFIG);
 }
 function countField(vs,field,order){
     const c={};(order||[]).forEach(o=>c[o]=0);
@@ -2200,6 +2622,8 @@ async function populateProfiles(){
             comm_styles:comms.join(', '),
             trigger_issue:_rand(triggers),
             conversion_strategy:_rand(strategies),
+            emotional_bloc:_rand(BLOC_NAMES),
+            emotional_bloc_secondary:(Math.random()<0.5?_rand(BLOC_NAMES):null),
             date_of_birth:yr+'-'+String(mo).padStart(2,'0')+'-'+String(dy).padStart(2,'0'),
             gender:_rand(genders),
             occupation:_rand(occupations),
@@ -2286,6 +2710,320 @@ async function populateCasework(){
     toast('Created '+done.toLocaleString()+' cases','success');
 }
 
+
+// ===== OVERSEAS VOTERS (DIASPORA) =====
+function overseasVoters(){
+    return (CACHE.voters||[]).filter(v=>v.isOverseas&&inScopeByConst(v.constituencyId));
+}
+function renderOverseas(){
+    const cf=document.getElementById('ovConstFilter');
+    if(cf&&cf.children.length<=1)cf.innerHTML='<option value="">All Constituencies</option>'+filteredConsts().map(c=>'<option value="'+c.id+'">'+c.id+' - '+c.name+'</option>').join('');
+    const all=overseasVoters();
+    // KPIs
+    const byStatus={};RETURN_STATUSES.forEach(s=>byStatus[s]=all.filter(v=>(v.returnStatus||'Unknown')===s).length);
+    const supporters=all.filter(v=>['Strong','Medium','Soft'].includes(v.supportLevel)||['Solid','Soft'].includes(v.category));
+    const comingSupporters=supporters.filter(v=>['Confirmed Coming','Booked','Arrived'].includes(v.returnStatus));
+    const pickups=all.filter(v=>v.needsAirportPickup);
+    const arrived=all.filter(v=>v.returnStatus==='Arrived');
+    const votedOverseas=all.filter(v=>v.hasVoted);
+    document.getElementById('overseasKPIs').innerHTML=
+        kpiCard(all.length.toLocaleString(),'Total Overseas','var(--primary)')+
+        kpiCard(supporters.length.toLocaleString(),'Overseas Supporters','var(--success)',all.length?Math.round(supporters.length/all.length*100)+'%':'')+
+        kpiCard(comingSupporters.length.toLocaleString(),'Supporters Returning','var(--info)','confirmed+')+
+        kpiCard(arrived.length.toLocaleString(),'Arrived Home','var(--purple)')+
+        kpiCard(votedOverseas.length.toLocaleString(),'Voted','var(--success)')+
+        kpiCard(pickups.length.toLocaleString(),'Need Pickup','var(--warning)');
+    // Pipeline (funnel of supporters through return stages)
+    const stages=['Unknown','Contacted','Confirmed Coming','Booked','Arrived'];
+    const pipe=document.getElementById('overseasPipeline');
+    pipe.innerHTML=stages.map(s=>{
+        const n=supporters.filter(v=>(v.returnStatus||'Unknown')===s).length;
+        const pct=supporters.length?Math.round(n/supporters.length*100):0;
+        return '<div style="margin-bottom:.625rem"><div style="display:flex;justify-content:space-between;font-size:.8125rem;margin-bottom:.25rem"><span>'+returnBadge(s)+'</span><span><strong>'+n+'</strong> ('+pct+'%)</span></div><div class="progress-bar"><div class="progress-fill '+(s==='Arrived'||s==='Booked'?'success':s==='Confirmed Coming'?'warning':'')+'" style="width:'+pct+'%"></div></div></div>';
+    }).join('')+'<p class="text-muted" style="font-size:.6875rem;margin-top:.5rem">Pipeline shown for the '+supporters.length+' overseas <strong>supporters</strong> — your highest-value diaspora targets.</p>';
+    // Arrivals by week
+    const weeks=[];for(let i=0;i<8;i++){const d=new Date(Date.now()+i*7*864e5);weeks.push(d)}
+    const weekLabels=weeks.map(d=>d.toLocaleDateString('en',{month:'short',day:'numeric'}));
+    const weekCounts=weeks.map((wStart,i)=>{const wEnd=new Date(wStart.getTime()+7*864e5);return all.filter(v=>{if(!v.expectedArrival)return false;const a=new Date(v.expectedArrival);return a>=wStart&&a<wEnd}).length});
+    Plotly.react('overseasArrivals',[{type:'bar',x:weekLabels,y:weekCounts,marker:{color:'#0891b2'}}],Object.assign({},plotlyTheme()),PLOTLY_CONFIG);
+    // By location
+    const locs={};all.forEach(v=>{const l=v.overseasLocation||'Unknown';locs[l]=(locs[l]||0)+1});
+    const locKeys=Object.keys(locs).sort((a,b)=>locs[b]-locs[a]).slice(0,10);
+    Plotly.react('overseasLocations',[{type:'bar',orientation:'h',y:locKeys.slice().reverse(),x:locKeys.slice().reverse().map(k=>locs[k]),marker:{color:'#1e3a5f'}}],Object.assign({margin:{t:20,r:15,b:40,l:120}},plotlyTheme()),PLOTLY_CONFIG);
+    // By constituency
+    const consts=filteredConsts();
+    Plotly.react('overseasConst',[{type:'bar',x:consts.map(c=>c.id),y:consts.map(c=>all.filter(v=>v.constituencyId===c.id).length),marker:{color:'#7c3aed'}}],Object.assign({},plotlyTheme()),PLOTLY_CONFIG);
+    // Pickups
+    const pu=document.getElementById('overseasPickups');
+    if(!pickups.length)pu.innerHTML='<p class="text-muted">No airport pickups flagged.</p>';
+    else pu.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:.625rem">'+pickups.sort((a,b)=>(a.expectedArrival||'').localeCompare(b.expectedArrival||'')).map(v=>'<div style="padding:.625rem;border:1px solid var(--border);border-radius:var(--radius-sm)"><strong style="font-size:.8125rem">'+v.firstName+' '+v.lastName+'</strong> '+returnBadge(v.returnStatus)+'<div style="font-size:.6875rem;color:var(--text-muted);margin-top:.25rem">📍 '+(v.overseasLocation||'-')+'<br>🛬 '+(v.expectedArrival?fDate(v.expectedArrival):'date TBD')+' → '+v.constituencyId+'</div>'+(v.phone?'<a href="'+waLink(v.phone,'')+'" target="_blank" class="btn btn-xs btn-success" style="text-decoration:none;margin-top:.375rem;display:inline-block">💬 WhatsApp</a>':'')+'</div>').join('')+'</div>';
+    document.getElementById('pickupCount').textContent=pickups.length+' pickup'+(pickups.length===1?'':'s')+' needed';
+    // Table
+    const sf=document.getElementById('ovStatusFilter').value;
+    const conf=document.getElementById('ovConstFilter').value;
+    const supf=document.getElementById('ovSupportFilter').value;
+    const search=(document.getElementById('ovSearch').value||'').toLowerCase();
+    let filtered=all.filter(v=>{
+        if(sf&&(v.returnStatus||'Unknown')!==sf)return false;
+        if(conf&&v.constituencyId!==conf)return false;
+        if(supf&&(v.supportLevel||'')!==supf)return false;
+        if(search&&!((v.firstName+' '+v.lastName).toLowerCase().includes(search))&&!((v.overseasLocation||'').toLowerCase().includes(search)))return false;
+        return true;
+    }).sort((a,b)=>(a.expectedArrival||'zzz').localeCompare(b.expectedArrival||'zzz'));
+    const tb=document.getElementById('overseasTableBody');
+    if(!filtered.length)tb.innerHTML='<tr><td colspan="8" class="table-empty">No overseas voters match. Mark voters as overseas in their profile (Support tab).</td></tr>';
+    else tb.innerHTML=filtered.slice(0,150).map(v=>'<tr><td><strong>'+v.firstName+' '+v.lastName+'</strong></td><td>'+supportBadge(v.supportLevel||v.category)+'</td><td>'+(v.overseasLocation||'-')+'</td><td>'+v.constituencyId+'</td><td><select class="form-input" style="padding:.25rem;font-size:.75rem;min-height:auto" onchange="quickReturnStatus(\''+v.id+'\',this.value)">'+RETURN_STATUSES.map(s=>'<option'+((v.returnStatus||'Unknown')===s?' selected':'')+'>'+s+'</option>').join('')+'</select></td><td style="font-size:.75rem">'+(v.expectedArrival?fDate(v.expectedArrival):'-')+'</td><td style="font-size:.75rem">'+(v.returnSponsor||'-')+'</td><td>'+(v.phone?'<a href="'+waLink(v.phone,'')+'" target="_blank" class="btn btn-xs btn-success" style="text-decoration:none">💬</a> ':'')+'<button class="btn btn-xs btn-outline" onclick="editVoter(\''+v.id+'\')">✏️</button>'+(v.needsAirportPickup?'':' <button class="btn btn-xs btn-outline" onclick="flagPickup(\''+v.id+'\')" title="Flag airport pickup">🛬</button>')+'</td></tr>').join('');
+    document.getElementById('ovCount').textContent=filtered.length+' overseas voter'+(filtered.length===1?'':'s');
+}
+function quickReturnStatus(id,status){
+    const d=getData(),v=d.voters.find(x=>x.id===id);if(!v)return;
+    v.returnStatus=status;v.isOverseas=true;
+    saveData(d);
+    addActivity('updated return status: '+v.firstName+' '+v.lastName+' → '+status,'✈️');
+    toast(v.firstName+' → '+status,'success');
+    renderOverseas();
+}
+function flagPickup(id){
+    const d=getData(),v=d.voters.find(x=>x.id===id);if(!v)return;
+    v.needsAirportPickup=true;
+    if(!d.rides)d.rides=[];
+    if(!(d.rides).find(r=>r.voterId===v.id&&r.pickupType==='airport')){
+        d.rides.push({id:genId(),voterId:v.id,voterName:v.firstName+' '+v.lastName,pickup:'RLB Airport / Vance Amory Airport',pickupType:'airport',destination:v.constituencyId,status:'pending',driverId:null,notes:'Airport pickup for overseas voter'+(v.expectedArrival?' — arrives '+v.expectedArrival:''),scheduledTime:v.expectedArrival||null,createdAt:new Date().toISOString()});
+    }
+    saveData(d);
+    addActivity('flagged airport pickup: '+v.firstName+' '+v.lastName,'🛬');
+    toast('Pickup flagged + dispatch ride created','success');
+    renderOverseas();
+}
+function overseasWhatsApp(){
+    // Jump to comms with overseas-confirmed segment pre-filled
+    showView('comms');
+    setTimeout(()=>{
+        switchCommsTab('campaign');
+        document.getElementById('campName').value='Overseas Return — Confirmed Supporters';
+        document.getElementById('campMessage').value='Hi {firstName}! 🇰🇳 So glad you\'re coming home to vote in {constituency}. Your polling station is {pollingStation}. Labour needs every vote — see you soon! Let us know if you need anything for your trip.';
+        const seg=document.getElementById('segStatus');
+        toast('Tip: filter the segment to overseas supporters, then generate the queue','info');
+    },150);
+}
+function exportOverseasReport(){generatePrintReport('overseasView','Overseas Voters Report')}
+
+// ===== TARGET LISTS =====
+let ACTIVE_TL=null;
+function renderTargetlists(){
+    const lists=CACHE.targetLists||[];
+    const cards=document.getElementById('targetListCards');
+    // compute counts
+    const voters=CACHE.voters||[];
+    if(!lists.length){cards.innerHTML='<p class="text-muted">No target lists yet. Click "+ New List" to build one.</p>'}
+    else cards.innerHTML=lists.filter(l=>!l.constituencyId||inScopeByConst(l.constituencyId)).map(l=>{
+        const count=voters.filter(v=>v.targetList===l.name).length;
+        const pct=l.cap?Math.round(count/l.cap*100):0;
+        const isActive=ACTIVE_TL===l.id;
+        return '<div class="card" style="'+(isActive?'border:2px solid var(--primary);':'')+'"><div class="card-body">'+
+            '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem"><strong style="font-size:.9375rem">'+l.name+'</strong>'+(isActive?'<span class="badge badge-primary">Open</span>':'')+'</div>'+
+            '<p class="text-muted" style="font-size:.6875rem;margin:.25rem 0">'+(l.constituencyId||'All constituencies')+(l.notes?' • '+l.notes:'')+'</p>'+
+            '<div style="font-size:1.5rem;font-weight:700">'+count+' <span style="font-size:.75rem;color:var(--text-muted)">/ '+l.cap+'</span></div>'+
+            '<div class="progress-bar" style="margin-bottom:.625rem"><div class="progress-fill '+(pct>=100?'danger':pct>=80?'warning':'success')+'" style="width:'+Math.min(pct,100)+'%"></div></div>'+
+            '<div style="display:flex;gap:.375rem;flex-wrap:wrap">'+
+                '<button class="btn btn-xs btn-primary" onclick="openTargetList(\''+l.id+'\')">📂 Open</button>'+
+                '<button class="btn btn-xs btn-outline" onclick="editTargetList(\''+l.id+'\')">✏️ Edit</button>'+
+                '<button class="btn btn-xs btn-outline" onclick="clearTargetListMembers(\''+l.id+'\')" title="Remove all voters from this list">🧹 Clear</button>'+
+                '<button class="btn btn-xs btn-danger requires-delete-voters" onclick="deleteTargetList(\''+l.id+'\')">🗑️ Delete</button>'+
+            '</div>'+
+        '</div></div>';
+    }).join('');
+    // populate const dropdowns
+    const tc=document.getElementById('tlConst');if(tc)tc.innerHTML='<option value="">Any</option>'+filteredConsts().map(c=>'<option value="'+c.id+'">'+c.id+' - '+c.name+'</option>').join('');
+    const ac=document.getElementById('tlAddConst');if(ac)ac.innerHTML='<option value="">All Constituencies</option>'+filteredConsts().map(c=>'<option value="'+c.id+'">'+c.id+' - '+c.name+'</option>').join('');
+    if(ACTIVE_TL)renderTargetListDetail();
+}
+function openTargetListModal(){
+    document.getElementById('tlEditId').value='';
+    document.getElementById('tlModalTitle').textContent='New Target List';
+    document.getElementById('tlSaveBtn').textContent='Create';
+    document.getElementById('tlName').value='';
+    document.getElementById('tlCap').value='2000';
+    document.getElementById('tlNotes').value='';
+    renderTargetlists();
+    const tc=document.getElementById('tlConst');if(tc)tc.value='';
+    openModal('targetListModal');
+}
+function editTargetList(id){
+    const l=(CACHE.targetLists||[]).find(x=>x.id===id);if(!l)return;
+    renderTargetlists(); // ensures const dropdown populated
+    document.getElementById('tlEditId').value=l.id;
+    document.getElementById('tlModalTitle').textContent='Edit Target List';
+    document.getElementById('tlSaveBtn').textContent='Save Changes';
+    document.getElementById('tlName').value=l.name;
+    document.getElementById('tlCap').value=l.cap||2000;
+    document.getElementById('tlNotes').value=l.notes||'';
+    document.getElementById('tlConst').value=l.constituencyId||'';
+    openModal('targetListModal');
+}
+function saveTargetList(){
+    const name=document.getElementById('tlName').value.trim();
+    if(!name){toast('Enter a list name','error');return}
+    const editId=document.getElementById('tlEditId').value;
+    const d=getData();
+    if(!d.targetLists)d.targetLists=[];
+    const cap=parseInt(document.getElementById('tlCap').value)||2000;
+    const constId=document.getElementById('tlConst').value||null;
+    const notes=document.getElementById('tlNotes').value.trim()||null;
+    if(editId){
+        const l=d.targetLists.find(x=>x.id===editId);if(!l)return;
+        // name clash check (other lists)
+        if(d.targetLists.find(x=>x.id!==editId&&x.name===name)){toast('Another list already has that name','error');return}
+        const oldName=l.name;
+        const memberCount=d.voters.filter(v=>v.targetList===oldName).length;
+        if(memberCount>cap&&!confirm('This list has '+memberCount+' voters but the new cap is '+cap+'. Members stay, but you won\'t be able to add more until under cap. Continue?'))return;
+        // rename propagation
+        if(oldName!==name)d.voters.forEach(v=>{if(v.targetList===oldName)v.targetList=name});
+        l.name=name;l.cap=cap;l.constituencyId=constId;l.notes=notes;
+        saveData(d);addActivity('edited target list: '+name,'✏️');toast('List updated','success');
+    }else{
+        if(d.targetLists.find(l=>l.name===name)){toast('A list with that name exists','error');return}
+        const l={id:genId(),name:name,constituencyId:constId,cap:cap,notes:notes,createdAt:new Date().toISOString()};
+        d.targetLists.push(l);saveData(d);addActivity('created target list: '+name,'🎯');toast('List created','success');
+        ACTIVE_TL=l.id;
+    }
+    closeModal('targetListModal');
+    renderTargetlists();
+    if(ACTIVE_TL)renderTargetListDetail();
+}
+function clearTargetListMembers(id){
+    const d=getData(),l=(d.targetLists||[]).find(x=>x.id===id);if(!l)return;
+    const count=d.voters.filter(v=>v.targetList===l.name).length;
+    if(!count){toast('List is already empty','info');return}
+    if(!confirm('Remove all '+count+' voters from "'+l.name+'"? The list itself stays; voters keep all their data.'))return;
+    d.voters.forEach(v=>{if(v.targetList===l.name)v.targetList=null});
+    saveData(d);addActivity('cleared target list: '+l.name,'🧹');toast('Removed '+count+' voters from list','success');
+    renderTargetlists();if(ACTIVE_TL===id)renderTargetListDetail();
+}
+function deleteTargetList(id){
+    const d=getData(),l=(d.targetLists||[]).find(x=>x.id===id);if(!l)return;
+    if(!confirm('Delete list "'+l.name+'"? Voters remain but lose this list tag.'))return;
+    d.voters.forEach(v=>{if(v.targetList===l.name)v.targetList=null});
+    d.targetLists=d.targetLists.filter(x=>x.id!==id);
+    saveData(d);if(ACTIVE_TL===id){ACTIVE_TL=null;document.getElementById('targetListDetail').style.display='none'}
+    renderTargetlists();toast('List deleted','success');
+}
+function openTargetList(id){ACTIVE_TL=id;document.getElementById('targetListDetail').style.display='';renderTargetListDetail();renderTargetlists()}
+function activeList(){return (CACHE.targetLists||[]).find(l=>l.id===ACTIVE_TL)}
+function renderTargetListDetail(){
+    const l=activeList();if(!l){document.getElementById('targetListDetail').style.display='none';return}
+    document.getElementById('tlDetailName').textContent='🎯 '+l.name;
+    // populate auto-build constituency dropdown
+    const bc=document.getElementById('tlBuildConst');
+    if(bc){const cur=bc.value;bc.innerHTML='<option value="">All (in scope)</option>'+filteredConsts().map(c=>'<option value="'+c.id+'">'+c.id+' - '+c.name+'</option>').join('');if(l.constituencyId){bc.value=l.constituencyId}else{bc.value=cur}}
+    const members=(CACHE.voters||[]).filter(v=>v.targetList===l.name);
+    const pct=l.cap?Math.round(members.length/l.cap*100):0;
+    document.getElementById('tlCapBar').innerHTML='<div style="display:flex;justify-content:space-between;font-size:.8125rem;margin-bottom:.25rem"><span><strong>'+members.length+'</strong> of '+l.cap+' ('+pct+'% full)</span>'+(members.length>=l.cap?'<span class="text-danger">List full</span>':'<span class="text-muted">'+(l.cap-members.length)+' slots left</span>')+'</div><div class="progress-bar"><div class="progress-fill '+(pct>=100?'danger':pct>=80?'warning':'success')+'" style="width:'+Math.min(pct,100)+'%"></div></div>';
+    document.getElementById('tlMemberCount').textContent=members.length;
+    const mb=document.getElementById('tlMembers');
+    mb.innerHTML=members.length?members.map(v=>'<div style="display:flex;justify-content:space-between;align-items:center;padding:.375rem .5rem;border-bottom:1px solid var(--border)"><span style="font-size:.8125rem;cursor:pointer" onclick="viewVoterDetail(\''+v.id+'\')">'+v.firstName+' '+v.lastName+' <span class="text-muted" style="font-size:.6875rem">'+v.constituencyId+'</span></span><button class="btn btn-xs btn-outline" onclick="removeFromTargetList(\''+v.id+'\')">✕</button></div>').join(''):'<p class="text-muted" style="font-size:.8125rem">No voters yet. Add from the left.</p>';
+    renderTLAddPool();
+}
+function renderTLAddPool(){
+    const l=activeList();if(!l)return;
+    const cf=document.getElementById('tlAddConst').value;
+    const search=(document.getElementById('tlAddSearch').value||'').toLowerCase();
+    let pool=(CACHE.voters||[]).filter(v=>v.targetList!==l.name&&inScopeByConst(v.constituencyId));
+    if(l.constituencyId)pool=pool.filter(v=>v.constituencyId===l.constituencyId);
+    if(cf)pool=pool.filter(v=>v.constituencyId===cf);
+    if(search)pool=pool.filter(v=>(v.firstName+' '+v.lastName).toLowerCase().includes(search));
+    pool=pool.slice(0,100);
+    const ap=document.getElementById('tlAddPool');
+    ap.innerHTML=pool.length?pool.map(v=>'<div style="display:flex;justify-content:space-between;align-items:center;padding:.375rem .5rem;border-bottom:1px solid var(--border)"><span style="font-size:.8125rem">'+v.firstName+' '+v.lastName+' <span class="text-muted" style="font-size:.6875rem">'+v.constituencyId+(v.targetList?' • in "'+v.targetList+'"':'')+'</span></span><button class="btn btn-xs btn-primary" onclick="addToTargetList(\''+v.id+'\')">+ Add</button></div>').join(''):'<p class="text-muted" style="font-size:.8125rem">No matching voters.</p>';
+}
+function addToTargetList(voterId){
+    const l=activeList();if(!l)return;
+    const members=(CACHE.voters||[]).filter(v=>v.targetList===l.name);
+    if(members.length>=l.cap){toast('List is at its cap of '+l.cap,'error');return}
+    const d=getData(),v=d.voters.find(x=>x.id===voterId);if(!v)return;
+    v.targetList=l.name;saveData(d);renderTargetListDetail();renderTargetlists();
+}
+function removeFromTargetList(voterId){
+    const l=activeList();if(!l)return;
+    const d=getData(),v=d.voters.find(x=>x.id===voterId);if(!v)return;
+    v.targetList=null;saveData(d);renderTargetListDetail();renderTargetlists();
+}
+function useTargetListInComms(){
+    const l=activeList();if(!l)return;
+    showView('comms');
+    setTimeout(()=>{switchCommsTab('campaign');const seg=document.getElementById('segTargetList');if(seg){seg.value=l.name;}document.getElementById('campName').value=l.name+' Outreach';toast('Segment set to target list: '+l.name,'info')},150);
+}
+function tlBuildPool(constId){
+    const l=activeList();
+    let pool=(CACHE.voters||[]).filter(v=>v.targetList!==l.name&&inScopeByConst(v.constituencyId));
+    const scopeConst=constId||l.constituencyId||'';
+    if(scopeConst)pool=pool.filter(v=>v.constituencyId===scopeConst);
+    return pool;
+}
+function tlResolveTarget(poolSize){
+    const mode=document.getElementById('tlBuildMode').value;
+    let target=parseInt(document.getElementById('tlBuildTarget').value)||0;
+    if(mode==='pct')target=Math.round(poolSize*(target/100));
+    return target;
+}
+function tlRoomLeft(){
+    const l=activeList();
+    const current=(CACHE.voters||[]).filter(v=>v.targetList===l.name).length;
+    return Math.max(0,(l.cap||2000)-current);
+}
+function autoBuildRandom(){
+    const l=activeList();if(!l)return;
+    const constId=document.getElementById('tlBuildConst').value;
+    const pool=tlBuildPool(constId);
+    if(!pool.length){toast('No available voters in that selection','error');return}
+    let target=tlResolveTarget(pool.length);
+    target=Math.min(target,tlRoomLeft());
+    if(target<=0){toast('List is at its cap','error');return}
+    // shuffle
+    const shuffled=pool.slice();
+    for(let i=shuffled.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[shuffled[i],shuffled[j]]=[shuffled[j],shuffled[i]]}
+    const pick=shuffled.slice(0,target);
+    if(!confirm('Add '+pick.length+' voters '+(constId?'from '+constId:'(in scope)')+' to "'+l.name+'"?'))return;
+    const d=getData();
+    pick.forEach(p=>{const v=d.voters.find(x=>x.id===p.id);if(v)v.targetList=l.name});
+    saveData(d);addActivity('auto-generated '+pick.length+' into '+l.name,'🎲');toast('Added '+pick.length+' voters','success');
+    renderTargetListDetail();renderTargetlists();
+}
+// Support ranking: Solid -> Medium -> Soft -> Undecided -> Unknown -> Opposition,
+// with commitment (Definite/Likely/Maybe/Unlikely) as a tiebreaker within each level.
+function voterRankScore(v){
+    const sl=v.supportLevel||({Solid:'Strong',Soft:'Soft',Reachable:'Undecided',Lost:'Opposition'}[v.category])||'Unknown';
+    const base={Strong:600,Medium:500,Soft:400,Undecided:300,Unknown:200,Opposition:100}[sl]||150;
+    const commit={Definite:40,Likely:30,Maybe:20,Unlikely:10}[v.commitment]||0;
+    return base+commit;
+}
+function autoBuildRanked(){
+    const l=activeList();if(!l)return;
+    const constId=document.getElementById('tlBuildConst').value;
+    const pool=tlBuildPool(constId);
+    if(!pool.length){toast('No available voters in that selection','error');return}
+    let target=tlResolveTarget(pool.length);
+    target=Math.min(target,tlRoomLeft());
+    if(target<=0){toast('List is at its cap','error');return}
+    const ranked=pool.slice().sort((a,b)=>voterRankScore(b)-voterRankScore(a));
+    const pick=ranked.slice(0,target);
+    // Summarize composition for the confirm dialog
+    const comp={};pick.forEach(p=>{const sl=p.supportLevel||({Solid:'Strong',Soft:'Soft',Reachable:'Undecided',Lost:'Opposition'}[p.category])||'Unknown';comp[sl]=(comp[sl]||0)+1});
+    const summary=['Strong','Medium','Soft','Undecided','Unknown','Opposition'].filter(k=>comp[k]).map(k=>comp[k]+' '+k).join(', ');
+    if(!confirm('Add the top '+pick.length+' voters by support ranking '+(constId?'from '+constId:'(in scope)')+' to "'+l.name+'"?\n\nComposition: '+summary))return;
+    const d=getData();
+    pick.forEach(p=>{const v=d.voters.find(x=>x.id===p.id);if(v)v.targetList=l.name});
+    saveData(d);addActivity('ranked-built '+pick.length+' into '+l.name,'🏆');toast('Added '+pick.length+' voters by ranking','success');
+    renderTargetListDetail();renderTargetlists();
+}
+function exportTargetList(){
+    if(!can('export')){toast('Your role cannot export data','error');return}
+    const l=activeList();if(!l)return;
+    const members=(CACHE.voters||[]).filter(v=>v.targetList===l.name);
+    const h='firstName,lastName,voterId,constituency,pd,phone,support\n';
+    const rows=members.map(v=>`${v.firstName},${v.lastName},${v.voterId},${v.constituencyId},${v.pollingDivisionId},${v.phone||''},${v.supportLevel||v.category||''}`).join('\n');
+    downloadFile('targetlist_'+l.name.replace(/\W+/g,'_')+'.csv',h+rows,'text/csv');toast('Exported','success');
+}
 
 // ===== CELL CAPTAINS =====
 function renderCaptains(){
@@ -2530,7 +3268,7 @@ function generateWalkList(){
     vs.sort((a,b)=>(a.address||'').localeCompare(b.address||''));
     const ct=document.getElementById('walkListContent'),c=getC(ci);
     if(!vs.length){ct.innerHTML='<p class="text-muted text-center">No voters match</p>';return}
-    ct.innerHTML='<div style="margin-bottom:1rem"><h4>Walk List: '+c.id+' - '+c.name+(pi?' / '+(getPD(pi)?getPD(pi).name:pi):'')+'</h4><p class="text-muted" style="font-size:.75rem">'+vs.length+' stops | '+new Date().toLocaleString()+' | Filter: '+fl+'</p></div><table style="width:100%"><thead><tr><th>#</th><th>Name</th><th>Address</th><th>Support</th><th>Phone</th><th>Notes</th><th>Result</th></tr></thead><tbody>'+vs.map((v,i)=>'<tr><td>'+(i+1)+'</td><td><strong>'+v.firstName+' '+v.lastName+'</strong><br><span class="text-muted" style="font-size:.6875rem">'+v.voterId+'</span></td><td>'+(v.address||'-')+'</td><td>'+supportBadge(v.supportLevel||v.category)+'</td><td>'+(v.phone||'-')+'</td><td style="font-size:.75rem">'+(v.commitment?'Commit: '+v.commitment:'')+(v.rideNeeded?' 🚗':'')+'</td><td style="width:80px"><div style="border:1px solid var(--border);height:24px;border-radius:4px"></div></td></tr>').join('')+'</tbody></table>';
+    ct.innerHTML='<div style="margin-bottom:1rem"><h4>Walk List: '+c.id+' - '+c.name+(pi?' / '+(getPD(pi)?getPD(pi).name:pi):'')+'</h4><p class="text-muted" style="font-size:.75rem">'+vs.length+' stops | '+new Date().toLocaleString()+' | Filter: '+fl+' • <em>tap a row to open the voter</em></p></div><table style="width:100%"><thead><tr><th>#</th><th>Name</th><th>Address</th><th>Support</th><th>Phone</th><th>Notes</th><th>Result</th></tr></thead><tbody>'+vs.map((v,i)=>'<tr style="cursor:pointer" onclick="viewVoterDetail(\''+v.id+'\')"><td>'+(i+1)+'</td><td><strong>'+v.firstName+(v.alias?' "'+v.alias+'"':'')+' '+v.lastName+'</strong><br><span class="text-muted" style="font-size:.6875rem">'+v.voterId+'</span></td><td>'+(v.address||'-')+'</td><td>'+supportBadge(v.supportLevel||v.category)+'</td><td>'+(v.phone||'-')+'</td><td style="font-size:.75rem">'+(v.commitment?'Commit: '+v.commitment:'')+(v.rideNeeded?' 🚗':'')+'</td><td style="width:80px" onclick="event.stopPropagation()"><div style="border:1px solid var(--border);height:24px;border-radius:4px"></div></td></tr>').join('')+'</tbody></table>';
     addActivity('walk list for '+c.id,'🚶');toast(vs.length+' stops','success');
 }
 function startCanvassFromWalkList(){
@@ -2587,10 +3325,15 @@ function renderCanvassCard(){
     const hh=v.householdId?(CACHE.households||[]).find(h=>h.id===v.householdId):null;
     const body=document.getElementById('canvassCardBody');
     body.innerHTML=
-        '<div style="text-align:center;margin-bottom:1rem"><h3 style="font-size:1.4rem;margin-bottom:.25rem">'+v.firstName+' '+v.lastName+'</h3>'+
+        '<div style="text-align:center;margin-bottom:1rem"><h3 style="font-size:1.4rem;margin-bottom:.25rem;cursor:pointer;color:var(--primary)" onclick="viewVoterDetail(\''+v.id+'\')" title="Tap to open full voter profile">'+v.firstName+(v.alias?' "'+v.alias+'"':'')+' '+v.lastName+' ›</h3>'+
         '<p class="text-muted" style="font-size:.8125rem">'+(v.address||'No address')+'</p>'+
-        '<p class="text-muted" style="font-size:.75rem">'+(pd?pd.name:'')+' • '+supportBadge(v.supportLevel||v.category)+(hh?' • 🏠 '+hh.name:'')+'</p>'+
+        '<p class="text-muted" style="font-size:.75rem">'+(pd?pd.name:'')+' • '+supportBadge(v.supportLevel||v.category)+(hh?' • 🏠 '+hh.name:'')+(v.isOverseas?' • ✈️ Overseas ('+(v.overseasLocation||'?')+')':'')+(v.livesOutside?' • 🏘️ Lives in '+(v.residenceLocation||'?'):'')+'</p>'+
         (v.phone?'<div style="margin-top:.5rem"><a href="'+waLink(v.phone,'')+'" target="_blank" class="btn btn-xs btn-success" style="text-decoration:none">💬 WhatsApp</a> <a href="tel:'+v.phone+'" class="btn btn-xs btn-outline" style="text-decoration:none">📞 '+v.phone+'</a></div>':'')+
+        '<div style="margin-top:.5rem;display:flex;gap:.375rem;justify-content:center;flex-wrap:wrap">'+
+            '<button class="btn btn-xs btn-outline" onclick="editVoter(\''+v.id+'\')">✏️ Edit Voter</button>'+
+            '<button class="btn btn-xs btn-outline" onclick="viewVoterDetail(\''+v.id+'\')">👤 Full Profile</button>'+
+            '<button class="btn btn-xs btn-info" onclick="canvassOpenCase(\''+v.id+'\')">📋 Open Case</button>'+
+        '</div>'+
         (v.triggerIssue?'<p style="margin-top:.5rem;font-size:.75rem;background:var(--warning-light);color:var(--warning);padding:.375rem .625rem;border-radius:var(--radius-sm);display:inline-block">🔥 '+v.triggerIssue+'</p>':'')+
         '</div>'+
         '<div style="margin-bottom:1rem"><label style="font-size:.75rem;font-weight:600;margin-bottom:.5rem;display:block">Door outcome:</label>'+
@@ -2610,6 +3353,19 @@ function renderCanvassCard(){
         '<div class="form-group"><label style="font-size:.75rem">Issues raised / notes</label><textarea class="form-input" id="cvNotes" rows="2" placeholder="What did they say? Concerns?"></textarea></div>'+
         '<div class="form-group"><label style="font-size:.75rem">Commitment level</label><select class="form-input" id="cvCommitment"><option value="">No change</option><option>Definite</option><option>Likely</option><option>Maybe</option><option>Unlikely</option></select></div>';
 }
+function canvassOpenCase(voterId){
+    // Item 6: open a constituent-service case for this voter from the canvass card
+    openCaseModal(voterId);
+}
+function startCanvassVoter(voterId){
+    // Item 3: jump from a voter profile straight into canvassing that one voter
+    const d=getData(),v=d.voters.find(x=>x.id===voterId);
+    if(!v){toast('Voter not found','error');return}
+    closeModal('voterDetailModal');closeModal('voterModal');
+    CANVASS_LIST=[v];CANVASS_IDX=0;CANVASS_RESULTS=[];
+    showView('canvassing');
+    setTimeout(()=>{switchCanvassTab('canvass');renderCanvassCard()},150);
+}
 function canvassOutcome(outcome){
     const v=CANVASS_LIST[CANVASS_IDX];
     if(!v)return;
@@ -2626,8 +3382,10 @@ function canvassOutcome(outcome){
         const catMap={supporter:'Solid',undecided:'Reachable',opposed:'Lost'};
         if(supportMap[outcome]){
             voter.previousCategory=voter.category;
+            const oldSL=voter.supportLevel;
             voter.supportLevel=supportMap[outcome];
             voter.category=catMap[outcome];
+            if(oldSL!==voter.supportLevel)logSupportHistory(v.id,voter.supportLevel,voter.emotionalState,'canvassed','Door outcome: '+outcome+(notes?' — '+notes:''));
         }
         if(needsRide)voter.rideNeeded=true;
         if(commitment)voter.commitment=commitment;
@@ -2668,15 +3426,19 @@ async function replayOfflineQueue(){
     let queue;
     try{queue=JSON.parse(localStorage.getItem('offline_queue')||'[]')}catch(e){return}
     if(!queue.length){updateSyncStatus('online');return}
+    if(!navigator.onLine){updateSyncStatus('offline');return}
     console.log('[OFFLINE] Replaying',queue.length,'queued ops');
+    // Clear first; syncOps re-queues on failure so nothing is lost
     localStorage.removeItem('offline_queue');
-    await syncOps(queue);
-    updateSyncStatus('online');
+    try{await syncOps(queue)}catch(e){queueOffline(queue)}
+    // Reload fresh data so the UI reflects synced state
+    if(navigator.onLine&&pendingOfflineCount()===0){try{await loadAllData();refreshView(AS.currentView)}catch(e){}}
+    updateSyncStatus(pendingOfflineCount()>0?'offline':'online');
 }
 
 
 // ===== COMMUNICATION HUB (WhatsApp-first) =====
-const MERGE_FIELDS=['firstName','lastName','fullName','constituency','pd','pollingStation','phone','supportLevel','commitment','triggerIssue','household','occupation'];
+const MERGE_FIELDS=['firstName','lastName','fullName','alias','constituency','pd','pollingStation','votingCenter','phone','supportLevel','emotionalBloc','triggerIssue','occupation','household','age','overseasLocation','returnStatus','expectedArrival'];
 let CAMPAIGN_QUEUE=[]; // current queue of {voter, message, sent}
 let CURRENT_CAMPAIGN_ID=null;
 
@@ -2702,6 +3464,8 @@ function renderComms(){
     if(sc&&sc.children.length<=1)sc.innerHTML='<option value="">Any</option>'+CONSTITUENCIES.map(c=>'<option value="'+c.id+'">'+c.id+' - '+c.name+'</option>').join('');
     const st=document.getElementById('segTribe');
     if(st&&st.children.length<=1)st.innerHTML='<option value="">Any</option>'+CORE_TRIBES.map(t=>'<option>'+t+'</option>').join('');
+    const stl=document.getElementById('segTargetList');
+    if(stl){const cur=stl.value;stl.innerHTML='<option value="">Any</option>'+(CACHE.targetLists||[]).map(l=>'<option>'+l.name+'</option>').join('');stl.value=cur}
     renderTemplateLibrary();
 }
 
@@ -2740,24 +3504,61 @@ function updateSegPD(){
     const c=document.getElementById('segConst').value;
     document.getElementById('segPD').innerHTML='<option value="">Any</option>'+(c?getPDsFor(c).map(p=>'<option value="'+p.id+'">'+p.code+' - '+p.name+'</option>').join(''):'');
 }
+// Per-bloc ready-to-use WhatsApp message starters (uses recommended tone)
+const BLOC_MESSAGES={
+    'The Loyalists':'Hi {firstName}! 🇰🇳 Together we built this movement, and your unwavering support is the backbone of our progress. We appreciate you. Polling station: {pollingStation}. Let\'s finish strong!',
+    'The Forgotten':'Hi {firstName}, we see you and your community matters to us. No community will be left behind. We\'d love to hear your concerns directly — your voice counts. Your polling station is {pollingStation}.',
+    'The Aspirers':'Hi {firstName}! 🚀 The future belongs to you. We\'re building real pathways to opportunity — jobs, training, and growth. Be part of it. Vote at {pollingStation}.',
+    'The Protectors':'Hi {firstName}, we are committed to protecting our communities — safety, order, and stability for your family. Strong leadership delivers. Your polling station is {pollingStation}.',
+    'The Survivors':'Hi {firstName}, we understand the pressures families face right now, and we\'re working to ease the burden. No one should struggle alone. We\'re here for you. Vote at {pollingStation}.',
+    'The Skeptics':'Hi {firstName}, we know promises mean nothing without delivery — so judge us by the results. Here is the proof of progress in {constituency}. Your polling station is {pollingStation}.',
+    'The Caregivers':'Hi {firstName} 💗 We support those who support others. Strong families build strong communities, and we\'re investing in healthcare, education, and family programs. Vote at {pollingStation}.',
+    'The Builders':'Hi {firstName}! 🏗️ We are building the future together. This generation must leave a legacy of development and opportunity. Partner with us. Your polling station is {pollingStation}.'
+};
+function suggestBlocTone(){
+    const b=document.getElementById('segBloc').value;
+    const hint=document.getElementById('blocToneHint');
+    if(!b||!EMOTIONAL_BLOCS[b]){hint.style.display='none';return}
+    const d=EMOTIONAL_BLOCS[b];
+    hint.style.display='block';
+    hint.style.background=d.color+'18';
+    hint.style.borderLeft='3px solid '+d.color;
+    hint.innerHTML='<strong>'+d.icon+' '+b+'</strong> — <em>'+d.emotion+'</em>. Responds to: '+d.respond+'.<br><strong>Recommended tone:</strong> '+d.tone+'<br><button type="button" class="btn btn-xs btn-primary" style="margin-top:.5rem" onclick="insertBlocMessage(\''+b.replace(/'/g,"\\'")+'\')">✨ Use suggested message for '+b+'</button>';
+}
+function insertBlocMessage(b){
+    if(BLOC_MESSAGES[b]){
+        document.getElementById('campMessage').value=BLOC_MESSAGES[b];
+        if(!document.getElementById('campName').value)document.getElementById('campName').value=b+' Outreach';
+        toast('Suggested message loaded — edit as needed','success');
+    }
+}
 
 function mergeMessage(template,v){
     const c=getC(v.constituencyId),pd=getPD(v.pollingDivisionId);
     const st=v.pollingStationId?(CACHE.pollingStations||[]).find(s=>s.id===v.pollingStationId):null;
     const hh=v.householdId?(CACHE.households||[]).find(h=>h.id===v.householdId):null;
+    let age='';
+    if(v.dateOfBirth){const dob=new Date(v.dateOfBirth);if(!isNaN(dob)){age=Math.floor((Date.now()-dob.getTime())/(365.25*864e5))}}
     return template
         .replace(/\{firstName\}/g,v.firstName||'')
         .replace(/\{lastName\}/g,v.lastName||'')
         .replace(/\{fullName\}/g,(v.firstName||'')+' '+(v.lastName||''))
+        .replace(/\{alias\}/g,v.alias||v.firstName||'')
         .replace(/\{constituency\}/g,c?c.name:v.constituencyId||'')
         .replace(/\{pd\}/g,pd?pd.name:'')
-        .replace(/\{pollingStation\}/g,st?st.name:'your polling station')
+        .replace(/\{pollingStation\}/g,pd?pd.name:'your polling station')
+        .replace(/\{votingCenter\}/g,st?st.name:'your voting center')
         .replace(/\{phone\}/g,v.phone||'')
         .replace(/\{supportLevel\}/g,v.supportLevel||v.category||'')
         .replace(/\{commitment\}/g,v.commitment||'')
+        .replace(/\{emotionalBloc\}/g,v.emotionalBloc||'')
         .replace(/\{triggerIssue\}/g,v.triggerIssue||'')
         .replace(/\{household\}/g,hh?hh.name:'')
-        .replace(/\{occupation\}/g,v.occupation||'');
+        .replace(/\{occupation\}/g,v.occupation||'')
+        .replace(/\{age\}/g,age!==''?age:'')
+        .replace(/\{overseasLocation\}/g,v.overseasLocation||'')
+        .replace(/\{returnStatus\}/g,v.returnStatus||'')
+        .replace(/\{expectedArrival\}/g,v.expectedArrival?fDate(v.expectedArrival):'');
 }
 
 function waLink(phone,msg){
@@ -2783,18 +3584,29 @@ function buildCampaignQueue(){
     const segPD=document.getElementById('segPD').value;
     const segCommitment=document.getElementById('segCommitment').value;
     const segTribe=document.getElementById('segTribe').value;
+    const segBloc=document.getElementById('segBloc').value;
+    const segReturn=document.getElementById('segReturn').value;
+    const segTL=document.getElementById('segTargetList')?document.getElementById('segTargetList').value:'';
     const segStatus=document.getElementById('segStatus').value;
     const needPhone=document.getElementById('segHasPhone').checked;
     const d=getData();
     let vs=d.voters.filter(v=>{
+        if(!inScopeByConst(v.constituencyId))return false;
         if(segSupport&&(v.supportLevel||'')!==segSupport)return false;
         if(segConst&&v.constituencyId!==segConst)return false;
         if(segPD&&v.pollingDivisionId!==segPD)return false;
         if(segCommitment&&(v.commitment||'')!==segCommitment)return false;
         if(segTribe&&!csvToArr(v.coreTribes).includes(segTribe))return false;
+        if(segBloc&&v.emotionalBloc!==segBloc&&v.emotionalBlocSecondary!==segBloc)return false;
+        if(segReturn&&(v.returnStatus||'')!==segReturn)return false;
+        if(segTL&&v.targetList!==segTL)return false;
         if(segStatus==='not-voted'&&v.hasVoted)return false;
         if(segStatus==='needs-ride'&&!v.rideNeeded)return false;
         if(segStatus==='never-contacted'&&(v.contactCount||0)>0)return false;
+        if(segStatus==='overseas'&&!v.isOverseas)return false;
+        if(segStatus==='overseas-confirmed'&&!(v.isOverseas&&['Confirmed Coming','Booked','Arrived'].includes(v.returnStatus)))return false;
+        if(segStatus==='overseas-unconfirmed'&&!(v.isOverseas&&!['Confirmed Coming','Booked','Arrived'].includes(v.returnStatus)))return false;
+        if(segStatus==='lives-outside'&&!v.livesOutside)return false;
         if(needPhone&&!v.phone)return false;
         return true;
     });
@@ -2808,7 +3620,7 @@ function buildCampaignQueue(){
 function renderCampaignQueue(channel){
     const q=document.getElementById('campaignQueue');
     const sentCount=CAMPAIGN_QUEUE.filter(x=>x.sent).length;
-    let html='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem"><span style="font-size:.8125rem"><strong>'+sentCount+'</strong> / '+CAMPAIGN_QUEUE.length+' sent</span><div style="display:flex;gap:.5rem"><button class="btn btn-xs btn-success" onclick="saveCampaignRecord()">💾 Save Campaign</button><button class="btn btn-xs btn-outline" onclick="copyAllMessages()">📋 Copy All</button></div></div>';
+    let html='<div style="margin-bottom:.75rem"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem"><span style="font-size:.8125rem"><strong>'+sentCount+'</strong> / '+CAMPAIGN_QUEUE.length+' sent</span><div style="display:flex;gap:.5rem"><button class="btn btn-xs btn-success" onclick="saveCampaignRecord()">💾 Save</button><button class="btn btn-xs btn-outline" onclick="copyAllMessages()">📋 Copy All</button></div></div><div style="display:flex;gap:.5rem;flex-wrap:wrap"><button class="btn btn-sm btn-primary" style="flex:1;min-width:140px" onclick="startBatchSend(\''+channel+'\')">🚀 Batch Send</button><button class="btn btn-sm btn-outline" onclick="openBroadcastHelper(\''+channel+'\')">📢 Broadcast / Bulk</button></div></div>';
     html+='<div class="progress-bar mb-2"><div class="progress-fill success" style="width:'+(CAMPAIGN_QUEUE.length?Math.round(sentCount/CAMPAIGN_QUEUE.length*100):0)+'%"></div></div>';
     html+='<div style="max-height:420px;overflow-y:auto">';
     CAMPAIGN_QUEUE.slice(0,200).forEach((item,idx)=>{
@@ -2914,6 +3726,120 @@ function saveScriptTemplate(){
 }
 
 
+// ===== BATCH SEND (guided rapid one-tap sender) =====
+let BATCH_IDX=0, BATCH_CHANNEL='whatsapp', BATCH_TURBO=false;
+function startBatchSend(channel){
+    if(!CAMPAIGN_QUEUE.length){toast('Generate a send queue first','error');return}
+    BATCH_CHANNEL=channel||'whatsapp';
+    // start at first unsent
+    BATCH_IDX=CAMPAIGN_QUEUE.findIndex(x=>!x.sent);
+    if(BATCH_IDX<0)BATCH_IDX=0;
+    BATCH_TURBO=false;
+    if(!CURRENT_CAMPAIGN_ID)saveCampaignRecord();
+    renderBatchSend();
+    openModal('batchSendModal');
+}
+function renderBatchSend(){
+    const total=CAMPAIGN_QUEUE.length;
+    const sent=CAMPAIGN_QUEUE.filter(x=>x.sent).length;
+    const body=document.getElementById('batchSendBody');
+    if(BATCH_IDX>=total||sent>=total){
+        body.innerHTML='<div class="text-center" style="padding:2rem"><div style="font-size:3rem">✅</div><h3>Batch Complete</h3><p class="text-muted mb-3">Sent '+sent+' of '+total+' messages.</p><button class="btn btn-primary" onclick="closeBatchSend()">Done</button></div>';
+        return;
+    }
+    const item=CAMPAIGN_QUEUE[BATCH_IDX];
+    const v=item.voter;
+    const link=BATCH_CHANNEL==='sms'?smsLink(v.phone,item.message):waLink(v.phone,item.message);
+    const icon=BATCH_CHANNEL==='sms'?'💬 SMS':'💬 WhatsApp';
+    const pct=Math.round(sent/total*100);
+    body.innerHTML=
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem"><span style="font-size:.8125rem"><strong>'+(BATCH_IDX+1)+'</strong> of '+total+' • '+sent+' sent</span><label style="font-size:.6875rem;display:flex;align-items:center;gap:.375rem"><input type="checkbox" id="batchTurbo" '+(BATCH_TURBO?'checked':'')+' onchange="BATCH_TURBO=this.checked" style="width:auto"> Turbo (auto-open next on return)</label></div>'+
+        '<div class="progress-bar mb-2"><div class="progress-fill success" style="width:'+pct+'%"></div></div>'+
+        '<div class="card" style="margin-bottom:.75rem"><div class="card-body">'+
+            '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem"><strong>'+v.firstName+(v.alias?' "'+v.alias+'"':'')+' '+v.lastName+'</strong>'+supportBadge(v.supportLevel||v.category)+'</div>'+
+            (v.phone?'<p class="text-muted" style="font-size:.75rem;margin-bottom:.5rem">📞 '+v.phone+(v.emotionalBloc?' • '+v.emotionalBloc:'')+'</p>':'<p class="text-danger" style="font-size:.75rem">⚠️ No phone number — will skip</p>')+
+            '<div style="background:var(--bg);border-radius:var(--radius-sm);padding:.625rem;font-size:.8125rem;white-space:pre-wrap;max-height:160px;overflow:auto">'+item.message+'</div>'+
+        '</div></div>'+
+        '<div style="display:flex;gap:.5rem">'+
+            (v.phone?'<a href="'+link+'" target="_blank" class="btn btn-success" style="flex:2;text-decoration:none" onclick="batchAfterSend()">📤 Send '+icon+' & Next →</a>':'<button class="btn btn-warning" style="flex:2" onclick="batchSkip()">Skip (no phone) →</button>')+
+            '<button class="btn btn-outline" onclick="batchSkip()" style="flex:1">Skip</button>'+
+        '</div>'+
+        '<p class="text-muted text-center" style="font-size:.6875rem;margin-top:.75rem">Tip: tapping "Send" opens '+(BATCH_CHANNEL==='sms'?'Messages':'WhatsApp')+' with the text ready — press send there, then return here for the next.</p>';
+}
+function batchAfterSend(){
+    // Mark current sent + log, then advance. (link opens in new tab via the anchor)
+    const item=CAMPAIGN_QUEUE[BATCH_IDX];
+    if(item&&!item.sent)logQueueSend(BATCH_IDX,BATCH_CHANNEL);
+    setTimeout(()=>{advanceBatch()},400);
+}
+function batchSkip(){advanceBatch()}
+function advanceBatch(){
+    BATCH_IDX++;
+    // skip already-sent
+    while(BATCH_IDX<CAMPAIGN_QUEUE.length&&CAMPAIGN_QUEUE[BATCH_IDX].sent)BATCH_IDX++;
+    renderBatchSend();
+}
+function closeBatchSend(){closeModal('batchSendModal');renderCampaignQueue(BATCH_CHANNEL)}
+// Turbo: when user returns focus to the window during batch, auto-open next
+window.addEventListener('focus',()=>{
+    if(BATCH_TURBO&&document.getElementById('batchSendModal')&&document.getElementById('batchSendModal').classList.contains('active')){
+        const item=CAMPAIGN_QUEUE[BATCH_IDX];
+        if(item&&item.voter&&item.voter.phone&&!item.sent){
+            const link=BATCH_CHANNEL==='sms'?smsLink(item.voter.phone,item.message):waLink(item.voter.phone,item.message);
+            // Attempt auto-open (may be blocked by popup rules; fall back to manual)
+            const w=window.open(link,'_blank');
+            if(w){if(!item.sent)logQueueSend(BATCH_IDX,BATCH_CHANNEL);setTimeout(advanceBatch,500)}
+        }
+    }
+});
+// Shared: log a send without re-rendering the main queue
+function logQueueSend(idx,channel){
+    if(!CAMPAIGN_QUEUE[idx]||CAMPAIGN_QUEUE[idx].sent)return;
+    CAMPAIGN_QUEUE[idx].sent=true;
+    const v=CAMPAIGN_QUEUE[idx].voter;
+    const d=getData();
+    const voter=d.voters.find(x=>x.id===v.id);
+    if(voter){
+        d.contacts.push({id:genId(),voterId:v.id,method:channel==='sms'?'SMS':'WhatsApp',response:'Message sent',notes:CAMPAIGN_QUEUE[idx].message.substring(0,100),createdAt:new Date().toISOString()});
+        voter.lastContactDate=new Date().toISOString();
+        voter.contactCount=(voter.contactCount||0)+1;
+        if(CURRENT_CAMPAIGN_ID){
+            if(!d.messages)d.messages=[];
+            d.messages.push({id:genId(),campaignId:CURRENT_CAMPAIGN_ID,voterId:v.id,channel:channel,body:CAMPAIGN_QUEUE[idx].message,status:'sent',sentAt:new Date().toISOString(),createdAt:new Date().toISOString()});
+            const camp=d.campaigns.find(c=>c.id===CURRENT_CAMPAIGN_ID);if(camp)camp.sentCount=(camp.sentCount||0)+1;
+        }
+        saveData(d);
+    }
+}
+
+// ===== BROADCAST / BULK HELPER =====
+function openBroadcastHelper(channel){
+    const withPhone=CAMPAIGN_QUEUE.filter(x=>x.voter.phone);
+    const numbers=withPhone.map(x=>{let dg=(x.voter.phone||'').replace(/\D/g,'');if(dg.length===7)dg='1869'+dg;else if(dg.length===10)dg='1'+dg;return '+'+dg});
+    const sampleMsg=CAMPAIGN_QUEUE.length?CAMPAIGN_QUEUE[0].message:'';
+    // generic (non-personalized) version for broadcast
+    const genericMsg=document.getElementById('campMessage').value.replace(/\{firstName\}/g,'Friend').replace(/\{[^}]+\}/g,'');
+    const body=document.getElementById('broadcastBody');
+    // Bulk SMS links (batched to keep URLs sane)
+    let smsBlocks='';
+    if(channel==='sms'){
+        const batches=[];for(let i=0;i<numbers.length;i+=25)batches.push(numbers.slice(i,i+25));
+        smsBlocks='<div style="margin-bottom:1rem"><h5 style="font-size:.8125rem;margin-bottom:.375rem">📲 Bulk SMS ('+batches.length+' batch'+(batches.length===1?'':'es')+' of up to 25)</h5><p class="text-muted" style="font-size:.6875rem;margin-bottom:.5rem">Each button opens your Messages app pre-addressed to a batch with the text ready. One send per batch.</p>'+
+            batches.map((b,i)=>'<a href="sms:'+b.join(',')+'?&body='+encodeURIComponent(genericMsg)+'" class="btn btn-sm btn-success" style="text-decoration:none;margin:.125rem">Batch '+(i+1)+' ('+b.length+')</a>').join('')+'</div>';
+    }
+    body.innerHTML=
+        '<div style="background:var(--warning-light);color:var(--warning);padding:.625rem .75rem;border-radius:var(--radius-sm);font-size:.75rem;margin-bottom:1rem">⚠️ Broadcast sends the <strong>same</strong> message to everyone (no per-person merge fields). For personalized messages, use 🚀 Batch Send instead.</div>'+
+        smsBlocks+
+        '<h5 style="font-size:.8125rem;margin-bottom:.375rem">📢 WhatsApp Broadcast List ('+numbers.length+' recipients)</h5>'+
+        '<ol style="font-size:.75rem;color:var(--text-muted);margin:0 0 .5rem 1rem;padding:0"><li>In WhatsApp: <strong>⋮ → New broadcast</strong> (max 256, and recipients must have your number saved)</li><li>Copy the numbers and message below</li><li>Add the recipients, paste the message, send once</li></ol>'+
+        '<div class="form-group"><label>Recipients ('+numbers.length+')</label><textarea class="form-input" id="bcNumbers" rows="3" readonly>'+numbers.join(', ')+'</textarea><button class="btn btn-xs btn-outline" style="margin-top:.25rem" onclick="copyEl(\'bcNumbers\')">📋 Copy Numbers</button></div>'+
+        '<div class="form-group"><label>Message</label><textarea class="form-input" id="bcMsg" rows="4" readonly>'+genericMsg+'</textarea><button class="btn btn-xs btn-outline" style="margin-top:.25rem" onclick="copyEl(\'bcMsg\')">📋 Copy Message</button></div>'+
+        '<div style="border-top:1px solid var(--border);padding-top:.75rem;margin-top:.5rem"><p class="text-muted" style="font-size:.6875rem">For true automated one-click bulk sending (no manual steps, fully personalized), connect the <strong>WhatsApp Business Cloud API</strong> or an SMS gateway. Ask to have it wired in once you have an account.</p></div>';
+    openModal('broadcastModal');
+}
+function copyEl(id){const el=document.getElementById(id);el.select();navigator.clipboard.writeText(el.value).then(()=>toast('Copied','success')).catch(()=>toast('Select and copy manually','info'))}
+
+
 // ===== GEOGRAPHIC MANAGEMENT =====
 function refreshGeoArrays(){
     // Populate CONSTITUENCIES from DB; fallback to defaults if empty
@@ -2930,17 +3856,22 @@ function refreshGeoArrays(){
 
 // CONSTITUENCY CRUD
 function renderConsts(){
-    // Use existing renderConsts if needed but also wire up CRUD click
     const grid=document.getElementById('fullConstituencyGrid');
     if(!grid)return;
     const voters=CACHE.voters||[];
-    grid.innerHTML=filteredConsts().map(c=>{
+    const fc=filteredConsts();
+    if(!fc.length){grid.innerHTML='<p class="text-muted">No constituencies. Click + Add to create.</p>';return}
+    grid.innerHTML=fc.map(c=>{
         const cv=voters.filter(v=>v.constituencyId===c.id);
         const pds=PDS.filter(p=>p.constituencyId===c.id);
-        const supp=cv.filter(v=>(v.supportLevel==='Strong'||v.category==='Solid')||(v.supportLevel==='Soft'||v.category==='Soft')||v.supportLevel==='Medium').length;
-        return '<div class="constituency-card" onclick="editConstituency(\''+c.id+'\')"><h4>'+c.id+' — '+c.name+'</h4><p class="text-muted" style="font-size:.75rem;margin-bottom:.5rem">'+(c.island==='nevis'?'🏝️ Nevis':'🏝️ St. Kitts')+' • '+pds.length+' PDs</p><div style="display:flex;justify-content:space-between;font-size:.75rem"><span><strong>'+cv.length+'</strong> voters</span><span class="text-success"><strong>'+supp+'</strong> supporters</span></div></div>';
+        const supportOf=v=>v.supportLevel||({Solid:'Strong',Soft:'Soft',Reachable:'Undecided',Lost:'Opposition'}[v.category])||'Unknown';
+        const s=cv.filter(v=>supportOf(v)==='Strong').length;
+        const sf=cv.filter(v=>supportOf(v)==='Soft').length;
+        const supp=cv.filter(v=>['Strong','Medium','Soft'].includes(supportOf(v))).length;
+        const vt=cv.filter(v=>v.hasVoted).length;
+        const pct=cv.length>0?Math.round(supp/cv.length*100):0;
+        return '<div class="constituency-card"><div style="display:flex;justify-content:space-between;align-items:flex-start"><h4 style="cursor:pointer" onclick="showConstVoters(\''+c.id+'\')">'+c.id+' — '+c.name+'</h4><button class="btn btn-xs btn-outline" onclick="editConstituency(\''+c.id+'\')">✏️</button></div><p class="text-muted" style="font-size:.75rem;margin-bottom:.5rem">'+(c.island==='nevis'?'🌴 Nevis':'🏝️ St. Kitts')+' • '+pds.length+' Polling Stations</p><div style="display:flex;gap:.375rem;margin-bottom:.5rem;flex-wrap:wrap"><span class="badge badge-solid">'+s+' Strong</span><span class="badge badge-soft">'+sf+' Soft</span><span class="badge badge-success">'+vt+' Voted</span></div><div class="progress-bar"><div class="progress-fill '+(pct>=55?'success':pct>=45?'warning':'danger')+'" style="width:'+pct+'%"></div></div><div style="font-size:.6875rem;color:var(--text-muted);margin-top:.375rem">'+cv.length+' voters | '+pct+'% support</div></div>';
     }).join('');
-    if(!filteredConsts().length)grid.innerHTML='<p class="text-muted">No constituencies. Click + Add to create.</p>';
 }
 function openConstModal(){
     document.getElementById('constModalTitle').textContent='Add Constituency';
@@ -3550,7 +4481,7 @@ function deleteInfluencer(){
 
 
 // ===== INITIALIZATION =====
-function initApp(){document.querySelectorAll('.island-btn').forEach(b=>b.classList.toggle('active',b.dataset.island===AS.islandFilter));popConstDropdowns();showView('dashboard');updateScopeBanner();setInterval(updateClock,1000);setupOfflineHandling();replayOfflineQueue()}
+function initApp(){applyPermissions();document.querySelectorAll('.island-btn').forEach(b=>b.classList.toggle('active',b.dataset.island===AS.islandFilter));popConstDropdowns();showView('dashboard');updateScopeBanner();setInterval(updateClock,1000);setupOfflineHandling();replayOfflineQueue()}
 
 // Boot sequence
 document.getElementById('setupForm').addEventListener('submit',handleSetup);
