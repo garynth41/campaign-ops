@@ -274,7 +274,23 @@ body.no-export .requires-export{display:none!important}
 <div class="view" id="dashboardView">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem">
         <h3 style="margin:0">Campaign Dashboard</h3>
-        <div class="btn-group"><button class="btn btn-sm btn-outline" onclick="exportDashboardReport()">🖨️ Export Report</button></div>
+        <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+            <select class="form-input" id="dashScopeConst" onchange="setDashConst(this.value)" style="width:auto;min-width:210px"></select>
+            <button class="btn btn-sm btn-outline" onclick="toggleDashCompare()">📊 Compare</button>
+            <button class="btn btn-sm btn-outline" onclick="exportDashboardReport()">🖨️ Export Report</button>
+        </div>
+    </div>
+    <div id="dashScopeBanner" style="display:none;margin-bottom:1rem;padding:.625rem .875rem;background:var(--primary);color:#fff;border-radius:var(--radius-sm);font-size:.8125rem;display:none;align-items:center;justify-content:space-between"></div>
+    <!-- Comparison panel -->
+    <div class="card mb-3" id="dashComparePanel" style="display:none">
+        <div class="card-header"><span>📊 Compare Constituencies</span><button class="btn btn-xs btn-outline" onclick="toggleDashCompare()">✕ Close</button></div>
+        <div class="card-body">
+            <p class="text-muted" style="font-size:.75rem;margin-bottom:.5rem">Select two or more constituencies to compare key metrics side by side.</p>
+            <div id="dashComparePicker" style="display:flex;flex-wrap:wrap;gap:1.5rem;margin-bottom:.75rem"></div>
+            <div style="display:flex;gap:.5rem;margin-bottom:1rem"><button class="btn btn-sm btn-primary" onclick="runDashCompare()">Compare Selected</button><button class="btn btn-sm btn-outline" onclick="dashCompareAll()">Compare All</button></div>
+            <div id="dashCompareChart" style="height:340px;margin-bottom:1rem"></div>
+            <div class="table-container"><table id="dashCompareTable"></table></div>
+        </div>
     </div>
     <!-- KPI Row -->
     <div class="stats-grid" id="dashKPIs"></div>
@@ -288,7 +304,7 @@ body.no-export .requires-export{display:none!important}
     </div>
     <div class="grid-2 mb-3">
         <div class="card"><div class="card-header">Support Distribution</div><div class="card-body"><div id="dashSupportDonut" style="height:300px"></div></div></div>
-        <div class="card"><div class="card-header">Support by Constituency</div><div class="card-body"><div id="dashConstStack" style="height:300px"></div></div></div>
+        <div class="card"><div class="card-header" id="dashStackTitle">Support by Constituency</div><div class="card-body"><div id="dashConstStack" style="height:300px"></div></div></div>
     </div>
     <div class="grid-2 mb-3">
         <div class="card"><div class="card-header">Contact Activity (30 Days)</div><div class="card-body"><div id="dashContactTrend" style="height:260px"></div></div></div>
@@ -584,8 +600,8 @@ body.no-export .requires-export{display:none!important}
 <!-- TARGET LISTS -->
 <div class="view hidden" id="targetlistsView">
     <div class="page-header"><h3>🎯 Target Voter Lists</h3><button class="btn btn-primary" onclick="openTargetListModal()">+ New List</button></div>
-    <p class="text-muted" style="font-size:.8125rem;margin-bottom:1rem">Build curated lists of priority voters (capped per list, default 2,000). Add or remove voters easily, then use a list as a segment in the Comms Hub.</p>
-    <div id="targetListCards" class="grid-3 mb-3"></div>
+    <p class="text-muted" style="font-size:.8125rem;margin-bottom:1rem">Create a list, choose how it auto-generates (ranked by support or random sample), and use it as a segment in the Comms Hub. Lists persist permanently until deleted by an authorized user.</p>
+    <div class="card mb-3" style="background:var(--bg)"><div class="card-header"><span>📋 All Target Lists <span id="tlCount" class="text-muted" style="font-weight:400"></span></span></div><div class="card-body"><div id="targetListCards" class="grid-3"></div></div></div>
     <div class="card" id="targetListDetail" style="display:none">
         <div class="card-header"><span id="tlDetailName">List</span><div class="btn-group"><button class="btn btn-xs btn-outline" onclick="editTargetList(ACTIVE_TL)">✏️ Edit</button><button class="btn btn-xs btn-success" onclick="useTargetListInComms()">💬 Use in Comms</button><button class="btn btn-xs btn-outline requires-export" onclick="exportTargetList()">📤 Export</button><button class="btn btn-xs btn-outline" onclick="clearTargetListMembers(ACTIVE_TL)">🧹 Clear</button></div></div>
         <div class="card-body">
@@ -958,10 +974,36 @@ body.no-export .requires-export{display:none!important}
 <div class="modal-body">
     <input type="hidden" id="tlEditId">
     <div class="form-group"><label>List Name *</label><input type="text" class="form-input" id="tlName" placeholder="e.g., C8 Priority Persuadables"></div>
-    <div class="form-row"><div class="form-group"><label>Constituency (optional)</label><select class="form-input" id="tlConst"><option value="">Any</option></select></div><div class="form-group"><label>Cap</label><input type="number" class="form-input" id="tlCap" value="2000" min="1"></div></div>
+    <div class="form-row"><div class="form-group"><label>Constituency (optional)</label><select class="form-input" id="tlConst"><option value="">Any (in scope)</option></select></div><div class="form-group"><label>Cap (max voters)</label><input type="number" class="form-input" id="tlCap" value="2000" min="1"></div></div>
     <div class="form-group"><label>Notes</label><input type="text" class="form-input" id="tlNotes" placeholder="Purpose of this list"></div>
+    <div id="tlBuildSection" style="border-top:1px solid var(--border);margin-top:.75rem;padding-top:.75rem">
+        <label style="font-weight:600;font-size:.8125rem">Auto-Generate on Create</label>
+        <div class="form-group" style="margin-top:.375rem"><label>Build Method</label>
+            <select class="form-input" id="tlMethod" onchange="tlMethodChanged()">
+                <option value="manual">Manual — start empty, add voters myself</option>
+                <option value="ranked">Auto: Ranked by support (Solid → … → Opposition)</option>
+                <option value="random">Auto: Random sample</option>
+            </select>
+        </div>
+        <div id="tlBuildParams" class="hidden">
+            <div class="form-row">
+                <div class="form-group"><label>Target</label><div style="display:flex;gap:.375rem"><input type="number" class="form-input" id="tlTarget" value="500" min="1" style="flex:1"><select class="form-input" id="tlTargetMode" style="width:92px"><option value="count"># Voters</option><option value="pct">%</option></select></div></div>
+            </div>
+            <div class="form-group"><label>Include Support Levels <span class="text-muted" style="font-weight:400">(none checked = all)</span></label>
+                <div id="tlLevelChecks" style="display:flex;flex-wrap:wrap;gap:.75rem;font-size:.8125rem">
+                    <label style="display:flex;gap:.3rem;align-items:center"><input type="checkbox" class="tlLvl" value="Strong" style="width:auto">Strong</label>
+                    <label style="display:flex;gap:.3rem;align-items:center"><input type="checkbox" class="tlLvl" value="Medium" style="width:auto">Medium</label>
+                    <label style="display:flex;gap:.3rem;align-items:center"><input type="checkbox" class="tlLvl" value="Soft" style="width:auto">Soft</label>
+                    <label style="display:flex;gap:.3rem;align-items:center"><input type="checkbox" class="tlLvl" value="Undecided" style="width:auto">Undecided</label>
+                    <label style="display:flex;gap:.3rem;align-items:center"><input type="checkbox" class="tlLvl" value="Opposition" style="width:auto">Opposition</label>
+                    <label style="display:flex;gap:.3rem;align-items:center"><input type="checkbox" class="tlLvl" value="Unknown" style="width:auto">Unknown</label>
+                </div>
+            </div>
+            <p class="text-muted" style="font-size:.6875rem">Ranked fills strongest-support first; Random samples evenly. % is of the matching pool. Respects the cap.</p>
+        </div>
+    </div>
 </div>
-<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('targetListModal')">Cancel</button><button class="btn btn-primary" id="tlSaveBtn" onclick="saveTargetList()">Create</button></div>
+<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('targetListModal')">Cancel</button><button class="btn btn-primary" id="tlSaveBtn" onclick="saveTargetList()">Create &amp; Generate</button></div>
 </div></div>
 
 <!-- BATCH SEND MODAL -->
@@ -978,7 +1020,7 @@ body.no-export .requires-export{display:none!important}
 <div id="toastContainer" class="toast-container"></div>
 <script>
 // ===== CONFIG & STATE =====
-const AS={currentUser:null,currentView:'dashboard',islandFilter:(localStorage.getItem('islandScope')||'all'),charts:{},shiftWeekOffset:0};
+const AS={currentUser:null,currentView:'dashboard',islandFilter:(localStorage.getItem('islandScope')||'all'),charts:{},shiftWeekOffset:0,dashConst:''};
 let SB=null; // Supabase client
 let SB_ADMIN=null; // Admin client (service role)
 let CONSTITUENCIES=[{id:'C1',name:'St. Christopher 1',island:'st-kitts'},{id:'C2',name:'St. Christopher 2',island:'st-kitts'},{id:'C3',name:'St. Christopher 3',island:'st-kitts'},{id:'C4',name:'St. Christopher 4',island:'st-kitts'},{id:'C5',name:'St. Christopher 5',island:'st-kitts'},{id:'C6',name:'St. Christopher 6',island:'st-kitts'},{id:'C7',name:'St. Christopher 7',island:'st-kitts'},{id:'C8',name:'St. Christopher 8',island:'st-kitts'},{id:'C9',name:'Nevis 9',island:'nevis'},{id:'C10',name:'Nevis 10',island:'nevis'},{id:'C11',name:'Nevis 11',island:'nevis'}];
@@ -2388,8 +2430,16 @@ const SUPPORT_PALETTE={Strong:'#059669',Medium:'#0891b2',Soft:'#0284c7',Undecide
 
 function supportOf(v){return v.supportLevel||({Solid:'Strong',Soft:'Soft',Reachable:'Undecided',Lost:'Opposition'}[v.category])||'Unknown'}
 
+function dashScopedVoters(d){
+    let vs=filteredVoters(d);
+    if(AS.dashConst)vs=vs.filter(v=>v.constituencyId===AS.dashConst);
+    return vs;
+}
 function renderDashboard(){
-    const d=getData(),vs=filteredVoters(d);
+    populateDashScopeConst();
+    updateDashScopeBanner();
+    const d=getData(),vs=dashScopedVoters(d);
+    const scopedIds=new Set(vs.map(v=>v.id));
     const levels=['Strong','Medium','Soft','Undecided','Opposition','Unknown'];
     const counts={};levels.forEach(l=>counts[l]=0);
     vs.forEach(v=>{const s=supportOf(v);counts[s]=(counts[s]||0)+1});
@@ -2424,13 +2474,23 @@ function renderDashboard(){
     // Donut
     const donutLabels=levels.filter(l=>counts[l]>0);
     Plotly.react('dashSupportDonut',[{type:'pie',hole:.6,labels:donutLabels,values:donutLabels.map(l=>counts[l]),marker:{colors:donutLabels.map(l=>SUPPORT_PALETTE[l])},textinfo:'label+percent',textposition:'outside'}],Object.assign({showlegend:false},plotlyTheme()),PLOTLY_CONFIG);
-    // Constituency stacked bar
-    const consts=filteredConsts();
-    const traces=levels.map(l=>({type:'bar',name:l,x:consts.map(c=>c.id),y:consts.map(c=>vs.filter(v=>v.constituencyId===c.id&&supportOf(v)===l).length),marker:{color:SUPPORT_PALETTE[l]}}));
-    Plotly.react('dashConstStack',traces,Object.assign({barmode:'stack',showlegend:true,legend:{orientation:'h',y:-0.15,font:{size:10}}},plotlyTheme()),PLOTLY_CONFIG);
-    // Contact trend 30 days
+    // Constituency stacked bar — or, when one constituency is selected, break down by polling station
+    const stackTitle=document.getElementById('dashStackTitle');
+    if(AS.dashConst){
+        const pds=PDS.filter(p=>p.constituencyId===AS.dashConst);
+        if(stackTitle)stackTitle.textContent='Support by Polling Station — '+AS.dashConst;
+        const traces=levels.map(l=>({type:'bar',name:l,x:pds.map(p=>p.code),y:pds.map(p=>vs.filter(v=>v.pollingDivisionId===p.id&&supportOf(v)===l).length),marker:{color:SUPPORT_PALETTE[l]}}));
+        Plotly.react('dashConstStack',traces,Object.assign({barmode:'stack',showlegend:true,legend:{orientation:'h',y:-0.2,font:{size:10}}},plotlyTheme()),PLOTLY_CONFIG);
+    }else{
+        const consts=filteredConsts();
+        if(stackTitle)stackTitle.textContent='Support by Constituency';
+        const traces=levels.map(l=>({type:'bar',name:l,x:consts.map(c=>c.id),y:consts.map(c=>vs.filter(v=>v.constituencyId===c.id&&supportOf(v)===l).length),marker:{color:SUPPORT_PALETTE[l]}}));
+        Plotly.react('dashConstStack',traces,Object.assign({barmode:'stack',showlegend:true,legend:{orientation:'h',y:-0.15,font:{size:10}}},plotlyTheme()),PLOTLY_CONFIG);
+    }
+    // Contact trend 30 days (scoped to the selected voters)
     const days=[];for(let i=29;i>=0;i--)days.push(new Date(Date.now()-i*864e5).toISOString().split('T')[0]);
-    const dayCounts=days.map(day=>d.contacts.filter(c=>(c.createdAt||'').startsWith(day)).length);
+    const scopedContacts=AS.dashConst?d.contacts.filter(c=>scopedIds.has(c.voterId)):d.contacts;
+    const dayCounts=days.map(day=>scopedContacts.filter(c=>(c.createdAt||'').startsWith(day)).length);
     Plotly.react('dashContactTrend',[{type:'scatter',mode:'lines',fill:'tozeroy',x:days,y:dayCounts,line:{color:'#0284c7',width:2},fillcolor:'rgba(2,132,199,.15)'}],Object.assign({xaxis:{type:'date'}},plotlyTheme()),PLOTLY_CONFIG);
     // GOTV funnel
     const funnelBase=vs.length,funnelSup=supporters,funnelContacted=supForTurnout.filter(v=>(v.contactCount||0)>0).length,funnelCommitted=supForTurnout.filter(v=>['Definite','Likely'].includes(v.commitment)).length,funnelVoted=vot;
@@ -2459,9 +2519,91 @@ function kpiCard(value,label,color,sub){
     return '<div class="stat-card"><div class="stat-value" style="color:'+color+'">'+value+'</div><div class="stat-label">'+label+'</div>'+(sub?'<div style="font-size:.6875rem;color:var(--text-muted);margin-top:.25rem">'+sub+'</div>':'')+'</div>';
 }
 
-function renderDashPDs(){const d=getData(),cf=document.getElementById('dashConstFilter')?.value||'',tb=document.getElementById('pdSummaryTable');let pds=PDS.filter(p=>AS.islandFilter==='all'||p.island===AS.islandFilter);if(cf)pds=pds.filter(p=>p.constituencyId===cf);tb.innerHTML=pds.map(pd=>{const pv=d.voters.filter(v=>v.pollingDivisionId===pd.id),s=pv.filter(v=>v.category==='Solid').length,sf=pv.filter(v=>v.category==='Soft').length,ct=pv.filter(v=>v.contactCount>0).length,vt=pv.filter(v=>v.hasVoted).length,pct=pv.length>0?Math.round((s+sf)/pv.length*100):0;return`<tr><td><strong>${pd.code}</strong></td><td>${pd.constituencyId}</td><td>${pv.length}</td><td class="text-success">${s}</td><td style="color:var(--info)">${sf}</td><td>${ct}</td><td>${vt}</td><td><span class="badge badge-${pct>=55?'success':pct>=45?'warning':'danger'}">${pct}%</span></td></tr>`}).join('')}
+function renderDashPDs(){const d=getData(),cf=AS.dashConst||document.getElementById('dashConstFilter')?.value||'',tb=document.getElementById('pdSummaryTable');let pds=PDS.filter(p=>AS.islandFilter==='all'||p.island===AS.islandFilter);if(cf)pds=pds.filter(p=>p.constituencyId===cf);tb.innerHTML=pds.map(pd=>{const pv=d.voters.filter(v=>v.pollingDivisionId===pd.id),s=pv.filter(v=>v.category==='Solid').length,sf=pv.filter(v=>v.category==='Soft').length,ct=pv.filter(v=>v.contactCount>0).length,vt=pv.filter(v=>v.hasVoted).length,pct=pv.length>0?Math.round((s+sf)/pv.length*100):0;return`<tr><td><strong>${pd.code}</strong></td><td>${pd.constituencyId}</td><td>${pv.length}</td><td class="text-success">${s}</td><td style="color:var(--info)">${sf}</td><td>${ct}</td><td>${vt}</td><td><span class="badge badge-${pct>=55?'success':pct>=45?'warning':'danger'}">${pct}%</span></td></tr>`}).join('')}
 
 function showConstVoters(c){document.getElementById('voterConstFilter').value=c;updatePDFilter();showView('voters')}
+
+// ===== DASHBOARD SCOPE + COMPARE =====
+function constOptgroups(selectedId){
+    const sk=CONSTITUENCIES.filter(c=>c.island!=='nevis');
+    const nv=CONSTITUENCIES.filter(c=>c.island==='nevis');
+    const opt=c=>'<option value="'+c.id+'"'+(c.id===selectedId?' selected':'')+'>'+c.id+' — '+c.name+'</option>';
+    return '<optgroup label="🏝️ St. Kitts">'+sk.map(opt).join('')+'</optgroup>'+
+           '<optgroup label="🌴 Nevis">'+nv.map(opt).join('')+'</optgroup>';
+}
+function populateDashScopeConst(){
+    const sel=document.getElementById('dashScopeConst');if(!sel)return;
+    sel.innerHTML='<option value="">All Constituencies (in island scope)</option>'+constOptgroups(AS.dashConst);
+    sel.value=AS.dashConst||'';
+}
+function setDashConst(v){
+    AS.dashConst=v||'';
+    const dcf=document.getElementById('dashConstFilter');if(dcf)dcf.value=AS.dashConst;
+    renderDashboard();
+}
+function updateDashScopeBanner(){
+    const b=document.getElementById('dashScopeBanner');if(!b)return;
+    if(AS.dashConst){
+        const c=getC(AS.dashConst);
+        b.style.display='flex';
+        b.innerHTML='<span>📍 Viewing <strong>'+AS.dashConst+(c?' — '+c.name:'')+'</strong> only. All charts and tables below reflect this constituency.</span><button class="btn btn-xs" style="background:rgba(255,255,255,.25);color:#fff;border:none" onclick="setDashConst(\'\')">Show All ✕</button>';
+    }else{b.style.display='none'}
+}
+function toggleDashCompare(){
+    const p=document.getElementById('dashComparePanel');
+    const show=p.style.display==='none';
+    p.style.display=show?'':'none';
+    if(show){
+        // build picker checkboxes grouped by island
+        const mk=c=>'<label style="display:flex;align-items:center;gap:.375rem;font-size:.8125rem"><input type="checkbox" class="dashCmpChk" value="'+c.id+'" style="width:auto"> '+c.id+' '+c.name+'</label>';
+        const sk=CONSTITUENCIES.filter(c=>c.island!=='nevis'),nv=CONSTITUENCIES.filter(c=>c.island==='nevis');
+        document.getElementById('dashComparePicker').innerHTML=
+            '<div><div style="font-weight:600;font-size:.75rem;margin-bottom:.375rem">🏝️ St. Kitts</div>'+sk.map(mk).join('')+'</div>'+
+            '<div><div style="font-weight:600;font-size:.75rem;margin-bottom:.375rem">🌴 Nevis</div>'+nv.map(mk).join('')+'</div>';
+    }
+}
+function constMetrics(d,constId){
+    const vs=d.voters.filter(v=>v.constituencyId===constId);
+    const sup=vs.filter(v=>['Strong','Medium','Soft'].includes(supportOf(v)));
+    const strong=vs.filter(v=>supportOf(v)==='Strong').length;
+    const undecided=vs.filter(v=>supportOf(v)==='Undecided').length;
+    const voted=vs.filter(v=>v.hasVoted).length;
+    const contacted=vs.filter(v=>(v.contactCount||0)>0).length;
+    let wp=0;vs.forEach(v=>{const base={Strong:.95,Medium:.8,Soft:.65,Undecided:.3,Opposition:0,Unknown:.1}[supportOf(v)]||0;const mult=v.isOverseas?(RETURN_WEIGHT[v.returnStatus||'Unknown']!==undefined?RETURN_WEIGHT[v.returnStatus||'Unknown']:.1):1;wp+=base*mult});
+    return{
+        total:vs.length,supporters:sup.length,
+        supportPct:vs.length?Math.round(sup.length/vs.length*100):0,
+        strong:strong,undecided:undecided,voted:voted,
+        turnout:sup.length?Math.round(voted/sup.length*100):0,
+        contactPct:vs.length?Math.round(contacted/vs.length*100):0,
+        winProj:vs.length?Math.round(wp/vs.length*100):0
+    };
+}
+function runDashCompare(){
+    const ids=[...document.querySelectorAll('.dashCmpChk:checked')].map(c=>c.value);
+    if(ids.length<1){toast('Select at least one constituency','error');return}
+    dashRenderCompare(ids);
+}
+function dashCompareAll(){
+    dashRenderCompare(filteredConsts().map(c=>c.id));
+    document.querySelectorAll('.dashCmpChk').forEach(c=>{c.checked=filteredConsts().some(fc=>fc.id===c.value)});
+}
+function dashRenderCompare(ids){
+    const d=getData();
+    const rows=ids.map(id=>Object.assign({id:id,name:(getC(id)||{}).name||id},constMetrics(d,id)));
+    // grouped bar: Support%, Turnout%, Win Projection%
+    const metrics=[['supportPct','Support %','#0284c7'],['turnout','Turnout %','#7c3aed'],['winProj','Win Proj %','#059669'],['contactPct','Contact %','#0891b2']];
+    const traces=metrics.map(m=>({type:'bar',name:m[1],x:rows.map(r=>r.id),y:rows.map(r=>r[m[0]]),marker:{color:m[2]}}));
+    Plotly.react('dashCompareChart',traces,Object.assign({barmode:'group',legend:{orientation:'h',y:-0.18,font:{size:10}},yaxis:{ticksuffix:'%'}},plotlyTheme()),PLOTLY_CONFIG);
+    // table
+    const best=(key)=>Math.max(...rows.map(r=>r[key]));
+    const cell=(r,key,suffix)=>{const v=r[key];const hi=v===best(key)&&rows.length>1;return '<td'+(hi?' style="font-weight:700;color:var(--success)"':'')+'>'+v+(suffix||'')+'</td>'};
+    document.getElementById('dashCompareTable').innerHTML=
+        '<thead><tr><th>Constituency</th><th>Voters</th><th>Supporters</th><th>Support%</th><th>Strong</th><th>Undecided</th><th>Voted</th><th>Turnout%</th><th>Contact%</th><th>Win Proj%</th></tr></thead><tbody>'+
+        rows.map(r=>'<tr><td><strong>'+r.id+'</strong> '+r.name+'</td><td>'+r.total+'</td><td>'+r.supporters+'</td>'+cell(r,'supportPct','%')+'<td>'+r.strong+'</td><td>'+r.undecided+'</td><td>'+r.voted+'</td>'+cell(r,'turnout','%')+cell(r,'contactPct','%')+cell(r,'winProj','%')+'</tr>').join('')+
+        '</tbody>';
+    setTimeout(()=>Plotly.Plots.resize('dashCompareChart'),50);
+}
 
 // ===== ANALYTICS STUDIO =====
 function syncAnIslandFromConst(){
@@ -2820,10 +2962,13 @@ let ACTIVE_TL=null;
 function renderTargetlists(){
     const lists=CACHE.targetLists||[];
     const cards=document.getElementById('targetListCards');
-    // compute counts
     const voters=CACHE.voters||[];
+    const visible=lists.filter(l=>!l.constituencyId||inScopeByConst(l.constituencyId));
+    const cntEl=document.getElementById('tlCount');
+    if(cntEl)cntEl.textContent='('+visible.length+(visible.length!==lists.length?' shown · '+lists.length+' total':'')+')';
     if(!lists.length){cards.innerHTML='<p class="text-muted">No target lists yet. Click "+ New List" to build one.</p>'}
-    else cards.innerHTML=lists.filter(l=>!l.constituencyId||inScopeByConst(l.constituencyId)).map(l=>{
+    else if(!visible.length){cards.innerHTML='<p class="text-muted">No lists in the current island scope. Switch islands or create a list with constituency "Any".</p>'}
+    else cards.innerHTML=visible.map(l=>{
         const count=voters.filter(v=>v.targetList===l.name).length;
         const pct=l.cap?Math.round(count/l.cap*100):0;
         const isActive=ACTIVE_TL===l.id;
@@ -2848,13 +2993,24 @@ function renderTargetlists(){
 function openTargetListModal(){
     document.getElementById('tlEditId').value='';
     document.getElementById('tlModalTitle').textContent='New Target List';
-    document.getElementById('tlSaveBtn').textContent='Create';
+    document.getElementById('tlSaveBtn').textContent='Create & Generate';
     document.getElementById('tlName').value='';
     document.getElementById('tlCap').value='2000';
     document.getElementById('tlNotes').value='';
+    document.getElementById('tlMethod').value='manual';
+    document.getElementById('tlTarget').value='500';
+    document.getElementById('tlTargetMode').value='count';
+    document.querySelectorAll('.tlLvl').forEach(c=>c.checked=false);
+    document.getElementById('tlBuildSection').style.display='';
+    tlMethodChanged();
     renderTargetlists();
     const tc=document.getElementById('tlConst');if(tc)tc.value='';
     openModal('targetListModal');
+}
+function tlMethodChanged(){
+    const m=document.getElementById('tlMethod').value;
+    document.getElementById('tlBuildParams').classList.toggle('hidden',m==='manual');
+    document.getElementById('tlSaveBtn').textContent=(m==='manual'||document.getElementById('tlEditId').value)?'Save':'Create & Generate';
 }
 function editTargetList(id){
     const l=(CACHE.targetLists||[]).find(x=>x.id===id);if(!l)return;
@@ -2866,6 +3022,8 @@ function editTargetList(id){
     document.getElementById('tlCap').value=l.cap||2000;
     document.getElementById('tlNotes').value=l.notes||'';
     document.getElementById('tlConst').value=l.constituencyId||'';
+    // editing only changes metadata — hide the auto-build-on-create section
+    document.getElementById('tlBuildSection').style.display='none';
     openModal('targetListModal');
 }
 function saveTargetList(){
@@ -2879,24 +3037,35 @@ function saveTargetList(){
     const notes=document.getElementById('tlNotes').value.trim()||null;
     if(editId){
         const l=d.targetLists.find(x=>x.id===editId);if(!l)return;
-        // name clash check (other lists)
         if(d.targetLists.find(x=>x.id!==editId&&x.name===name)){toast('Another list already has that name','error');return}
         const oldName=l.name;
         const memberCount=d.voters.filter(v=>v.targetList===oldName).length;
         if(memberCount>cap&&!confirm('This list has '+memberCount+' voters but the new cap is '+cap+'. Members stay, but you won\'t be able to add more until under cap. Continue?'))return;
-        // rename propagation
         if(oldName!==name)d.voters.forEach(v=>{if(v.targetList===oldName)v.targetList=name});
         l.name=name;l.cap=cap;l.constituencyId=constId;l.notes=notes;
         saveData(d);addActivity('edited target list: '+name,'✏️');toast('List updated','success');
+        ACTIVE_TL=l.id;
     }else{
         if(d.targetLists.find(l=>l.name===name)){toast('A list with that name exists','error');return}
         const l={id:genId(),name:name,constituencyId:constId,cap:cap,notes:notes,createdAt:new Date().toISOString()};
-        d.targetLists.push(l);saveData(d);addActivity('created target list: '+name,'🎯');toast('List created','success');
+        d.targetLists.push(l);saveData(d);
         ACTIVE_TL=l.id;
+        // Auto-generate members if a build method was chosen
+        const method=document.getElementById('tlMethod').value;
+        if(method!=='manual'){
+            const target=parseInt(document.getElementById('tlTarget').value)||0;
+            const mode=document.getElementById('tlTargetMode').value;
+            const levels=[...document.querySelectorAll('.tlLvl:checked')].map(c=>c.value);
+            const r=tlBuildInto(l,{constId:constId,target:target,mode:mode,method:method,levels:levels});
+            addActivity('created + auto-built target list: '+name+' ('+r.added+')',method==='ranked'?'🏆':'🎲');
+            toast('Created "'+name+'" and added '+r.added+' voters'+(r.comp?' — '+compSummary(r.comp):''),'success');
+        }else{
+            addActivity('created target list: '+name,'🎯');toast('List created','success');
+        }
     }
     closeModal('targetListModal');
     renderTargetlists();
-    if(ACTIVE_TL)renderTargetListDetail();
+    if(ACTIVE_TL){document.getElementById('targetListDetail').style.display='';renderTargetListDetail()}
 }
 function clearTargetListMembers(id){
     const d=getData(),l=(d.targetLists||[]).find(x=>x.id===id);if(!l)return;
@@ -2908,6 +3077,7 @@ function clearTargetListMembers(id){
     renderTargetlists();if(ACTIVE_TL===id)renderTargetListDetail();
 }
 function deleteTargetList(id){
+    if(!can('deleteVoters')){toast('Your role does not have permission to delete lists','error');return}
     const d=getData(),l=(d.targetLists||[]).find(x=>x.id===id);if(!l)return;
     if(!confirm('Delete list "'+l.name+'"? Voters remain but lose this list tag.'))return;
     d.voters.forEach(v=>{if(v.targetList===l.name)v.targetList=null});
@@ -2960,6 +3130,34 @@ function useTargetListInComms(){
     showView('comms');
     setTimeout(()=>{switchCommsTab('campaign');const seg=document.getElementById('segTargetList');if(seg){seg.value=l.name;}document.getElementById('campName').value=l.name+' Outreach';toast('Segment set to target list: '+l.name,'info')},150);
 }
+// Shared build core — used by both the create modal and the in-detail panel.
+// opts: {constId, target, mode:'count'|'pct', method:'random'|'ranked', levels:[...]}
+function tlBuildInto(list,opts){
+    let pool=(CACHE.voters||[]).filter(v=>v.targetList!==list.name&&inScopeByConst(v.constituencyId));
+    const scopeConst=opts.constId||list.constituencyId||'';
+    if(scopeConst)pool=pool.filter(v=>v.constituencyId===scopeConst);
+    if(opts.levels&&opts.levels.length)pool=pool.filter(v=>opts.levels.includes(supportOf(v)));
+    if(!pool.length)return{added:0,reason:'no matching voters'};
+    let target=opts.target||0;
+    if(opts.mode==='pct')target=Math.round(pool.length*(target/100));
+    const current=(CACHE.voters||[]).filter(v=>v.targetList===list.name).length;
+    const room=Math.max(0,(list.cap||2000)-current);
+    target=Math.min(target,room);
+    if(target<=0)return{added:0,reason:'list at cap'};
+    let pick;
+    if(opts.method==='ranked'){
+        pick=pool.slice().sort((a,b)=>voterRankScore(b)-voterRankScore(a)).slice(0,target);
+    }else{
+        const sh=pool.slice();for(let i=sh.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[sh[i],sh[j]]=[sh[j],sh[i]]}
+        pick=sh.slice(0,target);
+    }
+    const comp={};pick.forEach(p=>{const sl=supportOf(p);comp[sl]=(comp[sl]||0)+1});
+    const d=getData();
+    pick.forEach(p=>{const v=d.voters.find(x=>x.id===p.id);if(v)v.targetList=list.name});
+    saveData(d);
+    return{added:pick.length,comp:comp};
+}
+function compSummary(comp){return ['Strong','Medium','Soft','Undecided','Unknown','Opposition'].filter(k=>comp[k]).map(k=>comp[k]+' '+k).join(', ')}
 function tlBuildPool(constId){
     const l=activeList();
     let pool=(CACHE.voters||[]).filter(v=>v.targetList!==l.name&&inScopeByConst(v.constituencyId));
@@ -2967,33 +3165,17 @@ function tlBuildPool(constId){
     if(scopeConst)pool=pool.filter(v=>v.constituencyId===scopeConst);
     return pool;
 }
-function tlResolveTarget(poolSize){
-    const mode=document.getElementById('tlBuildMode').value;
-    let target=parseInt(document.getElementById('tlBuildTarget').value)||0;
-    if(mode==='pct')target=Math.round(poolSize*(target/100));
-    return target;
-}
-function tlRoomLeft(){
-    const l=activeList();
-    const current=(CACHE.voters||[]).filter(v=>v.targetList===l.name).length;
-    return Math.max(0,(l.cap||2000)-current);
-}
 function autoBuildRandom(){
     const l=activeList();if(!l)return;
     const constId=document.getElementById('tlBuildConst').value;
-    const pool=tlBuildPool(constId);
-    if(!pool.length){toast('No available voters in that selection','error');return}
-    let target=tlResolveTarget(pool.length);
-    target=Math.min(target,tlRoomLeft());
-    if(target<=0){toast('List is at its cap','error');return}
-    // shuffle
-    const shuffled=pool.slice();
-    for(let i=shuffled.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[shuffled[i],shuffled[j]]=[shuffled[j],shuffled[i]]}
-    const pick=shuffled.slice(0,target);
-    if(!confirm('Add '+pick.length+' voters '+(constId?'from '+constId:'(in scope)')+' to "'+l.name+'"?'))return;
-    const d=getData();
-    pick.forEach(p=>{const v=d.voters.find(x=>x.id===p.id);if(v)v.targetList=l.name});
-    saveData(d);addActivity('auto-generated '+pick.length+' into '+l.name,'🎲');toast('Added '+pick.length+' voters','success');
+    const target=parseInt(document.getElementById('tlBuildTarget').value)||0;
+    const mode=document.getElementById('tlBuildMode').value;
+    const preview=tlBuildPool(constId).length;
+    if(!preview){toast('No available voters in that selection','error');return}
+    if(!confirm('Add up to '+(mode==='pct'?target+'% of '+preview:target)+' random voters '+(constId?'from '+constId:'(in scope)')+' to "'+l.name+'"?'))return;
+    const r=tlBuildInto(l,{constId:constId,target:target,mode:mode,method:'random'});
+    if(r.added){addActivity('auto-generated '+r.added+' into '+l.name,'🎲');toast('Added '+r.added+' voters','success')}
+    else toast('Nothing added ('+(r.reason||'')+')','info');
     renderTargetListDetail();renderTargetlists();
 }
 // Support ranking: Solid -> Medium -> Soft -> Undecided -> Unknown -> Opposition,
@@ -3007,20 +3189,14 @@ function voterRankScore(v){
 function autoBuildRanked(){
     const l=activeList();if(!l)return;
     const constId=document.getElementById('tlBuildConst').value;
-    const pool=tlBuildPool(constId);
-    if(!pool.length){toast('No available voters in that selection','error');return}
-    let target=tlResolveTarget(pool.length);
-    target=Math.min(target,tlRoomLeft());
-    if(target<=0){toast('List is at its cap','error');return}
-    const ranked=pool.slice().sort((a,b)=>voterRankScore(b)-voterRankScore(a));
-    const pick=ranked.slice(0,target);
-    // Summarize composition for the confirm dialog
-    const comp={};pick.forEach(p=>{const sl=p.supportLevel||({Solid:'Strong',Soft:'Soft',Reachable:'Undecided',Lost:'Opposition'}[p.category])||'Unknown';comp[sl]=(comp[sl]||0)+1});
-    const summary=['Strong','Medium','Soft','Undecided','Unknown','Opposition'].filter(k=>comp[k]).map(k=>comp[k]+' '+k).join(', ');
-    if(!confirm('Add the top '+pick.length+' voters by support ranking '+(constId?'from '+constId:'(in scope)')+' to "'+l.name+'"?\n\nComposition: '+summary))return;
-    const d=getData();
-    pick.forEach(p=>{const v=d.voters.find(x=>x.id===p.id);if(v)v.targetList=l.name});
-    saveData(d);addActivity('ranked-built '+pick.length+' into '+l.name,'🏆');toast('Added '+pick.length+' voters by ranking','success');
+    const target=parseInt(document.getElementById('tlBuildTarget').value)||0;
+    const mode=document.getElementById('tlBuildMode').value;
+    const preview=tlBuildPool(constId).length;
+    if(!preview){toast('No available voters in that selection','error');return}
+    if(!confirm('Add the top '+(mode==='pct'?target+'% of '+preview:target)+' voters by support ranking '+(constId?'from '+constId:'(in scope)')+' to "'+l.name+'"?'))return;
+    const r=tlBuildInto(l,{constId:constId,target:target,mode:mode,method:'ranked'});
+    if(r.added){addActivity('ranked-built '+r.added+' into '+l.name,'🏆');toast('Added '+r.added+' voters — '+compSummary(r.comp),'success')}
+    else toast('Nothing added ('+(r.reason||'')+')','info');
     renderTargetListDetail();renderTargetlists();
 }
 function exportTargetList(){
