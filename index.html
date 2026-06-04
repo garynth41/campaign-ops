@@ -204,6 +204,7 @@ body.no-export .requires-export{display:none!important}
         <div class="nav-section"><div class="nav-section-title">Overview</div>
             <div class="nav-item active" data-view="dashboard"><span class="nav-icon">📊</span> Dashboard</div>
             <div class="nav-item" data-view="analytics"><span class="nav-icon">📈</span> Analytics</div>
+            <div class="nav-item" data-view="forecast"><span class="nav-icon">🔮</span> Forecast</div>
             <div class="nav-item" data-view="command"><span class="nav-icon">🎯</span> Command Center</div>
             <div class="nav-item" data-view="islands"><span class="nav-icon">🏝️</span> Island Management</div>
         </div>
@@ -343,6 +344,49 @@ body.no-export .requires-export{display:none!important}
     </div>
     <div class="card mb-3"><div class="card-header"><span>📈 Support Sentiment Trends (recorded changes over time)</span><button class="btn btn-xs btn-outline requires-export" onclick="exportAllSupportHistory()">📤 Export History</button></div><div class="card-body"><div id="anSupportTrend" style="height:300px"></div></div></div>
     <div class="card"><div class="card-header">Constituency Performance</div><div class="card-body"><div class="table-container"><table><thead><tr><th>Constituency</th><th>Voters</th><th>Strong</th><th>Soft</th><th>Support%</th><th>Contacted%</th><th>Voted</th></tr></thead><tbody id="constPerfTable"></tbody></table></div></div></div>
+</div>
+
+<!-- ELECTION FORECAST -->
+<div class="view hidden" id="forecastView">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem">
+        <h3 style="margin:0">🔮 Election Forecast</h3>
+        <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+            <select class="form-input" id="fcConst" onchange="renderForecast()" style="width:auto;min-width:210px"></select>
+            <button class="btn btn-sm btn-outline" onclick="openHistoryModal()">📜 Add Historical Result</button>
+            <button class="btn btn-sm btn-primary requires-export" onclick="exportForecastReport()">📤 Export Forecast Report</button>
+        </div>
+    </div>
+    <p class="text-muted" style="font-size:.75rem;margin-bottom:1rem">Projections combine current support levels, canvassing/contact data, voter sentiment, turnout signals, overseas return likelihood, and historical results. They are probabilistic estimates with confidence levels — not guarantees.</p>
+
+    <!-- Projection summary -->
+    <div class="stats-grid" id="fcKPIs"></div>
+    <div class="card mb-3" id="fcWinnerBanner"></div>
+
+    <div class="grid-2 mb-3">
+        <div class="card"><div class="card-header">Projected Two-Party Vote Share</div><div class="card-body"><div id="fcShareChart" style="height:280px"></div></div></div>
+        <div class="card"><div class="card-header">Labour Vote Share — History vs Projection</div><div class="card-body"><div id="fcHistChart" style="height:280px"></div></div></div>
+    </div>
+
+    <!-- Scenario modeling -->
+    <div class="card mb-3">
+        <div class="card-header"><span>🎚️ Scenario Modeling</span><button class="btn btn-xs btn-outline" onclick="resetScenario()">Reset</button></div>
+        <div class="card-body">
+            <p class="text-muted" style="font-size:.6875rem;margin-bottom:.75rem">Adjust assumptions to test how the projection changes. Move a slider and the projection above updates live.</p>
+            <div class="grid-3" id="fcSliders"></div>
+        </div>
+    </div>
+
+    <!-- Factors + Risks -->
+    <div class="grid-2 mb-3">
+        <div class="card"><div class="card-header">📊 Major Factors Driving the Projection</div><div class="card-body"><div id="fcFactors"></div></div></div>
+        <div class="card"><div class="card-header">⚠️ Key Risks &amp; Recommended Focus</div><div class="card-body"><div id="fcRisks"></div></div></div>
+    </div>
+
+    <!-- Historical comparison + records -->
+    <div class="card mb-3">
+        <div class="card-header"><span>📜 Historical Results &amp; Comparison</span></div>
+        <div class="card-body"><div id="fcHistComparison" style="margin-bottom:1rem"></div><div class="table-container"><table id="fcHistTable"></table></div></div>
+    </div>
 </div>
 
 <!-- COMMAND CENTER -->
@@ -1007,6 +1051,45 @@ body.no-export .requires-export{display:none!important}
 </div></div>
 
 <!-- BATCH SEND MODAL -->
+<!-- HISTORICAL ELECTION RESULT MODAL -->
+<div class="modal-overlay" id="historyModal"><div class="modal"><div class="modal-header"><h3 class="modal-title" id="histModalTitle">Add Historical Result</h3><button class="modal-close" onclick="closeModal('historyModal')">×</button></div>
+<div class="modal-body">
+    <input type="hidden" id="histId">
+    <div class="form-row">
+        <div class="form-group"><label>Election Year *</label><input type="number" class="form-input" id="histYear" placeholder="2020" min="1980" max="2099"></div>
+        <div class="form-group"><label>Type</label><select class="form-input" id="histType"><option>General</option><option>By-election</option></select></div>
+    </div>
+    <div class="form-row">
+        <div class="form-group"><label>Constituency *</label><select class="form-input" id="histConst"></select></div>
+        <div class="form-group"><label>Party *</label><input type="text" class="form-input" id="histParty" placeholder="Labour / PAM / CCM / PLP / NRP"></div>
+    </div>
+    <div class="form-group"><label>Candidate</label><input type="text" class="form-input" id="histCandidate" placeholder="Candidate name"></div>
+    <div class="form-row">
+        <div class="form-group"><label>Votes Received</label><input type="number" class="form-input" id="histVotes" min="0"></div>
+        <div class="form-group"><label>Vote Share %</label><input type="number" class="form-input" id="histShare" min="0" max="100" step="0.1"></div>
+    </div>
+    <div class="form-row">
+        <div class="form-group"><label>Total Electorate</label><input type="number" class="form-input" id="histElectorate" min="0"></div>
+        <div class="form-group"><label>Total Votes Cast</label><input type="number" class="form-input" id="histCast" min="0"></div>
+    </div>
+    <div class="form-row">
+        <div class="form-group"><label>Result</label><select class="form-input" id="histResult"><option value="">—</option><option>Won</option><option>Lost</option></select></div>
+        <div class="form-group"><label>Margin (votes or %)</label><input type="number" class="form-input" id="histMargin" step="0.1"></div>
+    </div>
+    <div class="form-group"><label>Notes</label><input type="text" class="form-input" id="histNotes"></div>
+    <div style="border-top:1px solid var(--border);margin-top:.5rem;padding-top:.5rem">
+        <label style="font-weight:600;font-size:.8125rem">Source &amp; Verification</label>
+        <div class="form-row" style="margin-top:.375rem">
+            <div class="form-group"><label>Source Name</label><input type="text" class="form-input" id="histSourceName" placeholder="e.g., Electoral Office"></div>
+            <div class="form-group"><label>Confidence</label><select class="form-input" id="histConfidence"><option>High</option><option>Medium</option><option>Low</option></select></div>
+        </div>
+        <div class="form-group"><label>Source URL</label><input type="text" class="form-input" id="histSourceUrl" placeholder="https://..."></div>
+        <label style="display:flex;align-items:center;gap:.5rem;font-size:.8125rem"><input type="checkbox" id="histVerified" checked style="width:auto"> ✔️ Verified — include in official forecast calculations</label>
+    </div>
+</div>
+<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('historyModal')">Cancel</button><button class="btn btn-primary" onclick="saveHistory()">Save Result</button></div>
+</div></div>
+
 <div class="modal-overlay" id="batchSendModal"><div class="modal"><div class="modal-header"><h3 class="modal-title">🚀 Batch Send</h3><button class="modal-close" onclick="closeBatchSend()">×</button></div>
 <div class="modal-body" id="batchSendBody"></div>
 </div></div>
@@ -1027,7 +1110,7 @@ let CONSTITUENCIES=[{id:'C1',name:'St. Christopher 1',island:'st-kitts'},{id:'C2
 let PDS=[];CONSTITUENCIES.forEach(c=>{for(let i=1;i<=3;i++)PDS.push({id:`${c.id}-PD${i}`,code:`${c.id}-PD${i}`,name:`${c.name} PD ${i}`,constituencyId:c.id,island:c.island})});
 
 // Table name map: JS key → Supabase table
-const TBL={voters:'voters',contacts:'contacts',drivers:'drivers',rides:'rides',incidents:'incidents',volunteers:'volunteers',tasks:'tasks',donations:'donations',watchers:'watchers',scriptTemplates:'script_templates',shifts:'shifts',watcherReports:'watcher_reports',results:'results',activityLog:'activity_log',pollingStations:'polling_stations',households:'households',casework:'casework',influencers:'influencers',constituenciesDB:'constituencies',pollingDivisionsDB:'polling_divisions',campaigns:'campaigns',messages:'messages',captains:'captains',targetLists:'target_lists',supportHistory:'support_history'};
+const TBL={voters:'voters',contacts:'contacts',drivers:'drivers',rides:'rides',incidents:'incidents',volunteers:'volunteers',tasks:'tasks',donations:'donations',watchers:'watchers',scriptTemplates:'script_templates',shifts:'shifts',watcherReports:'watcher_reports',results:'results',activityLog:'activity_log',pollingStations:'polling_stations',households:'households',casework:'casework',influencers:'influencers',constituenciesDB:'constituencies',pollingDivisionsDB:'polling_divisions',campaigns:'campaigns',messages:'messages',captains:'captains',targetLists:'target_lists',supportHistory:'support_history',electionHistory:'election_history'};
 
 // EI Matrix dictionaries
 const SUPPORT_LEVELS=['Strong','Medium','Soft','Undecided','Opposition','Unknown'];
@@ -1136,7 +1219,7 @@ function rowsToSnake(arr){return(arr||[]).map(toSnake)}
 function rowsToCamel(arr){return(arr||[]).map(toCamel)}
 
 // ===== LOCAL CACHE =====
-const CACHE={voters:[],contacts:[],drivers:[],rides:[],incidents:[],volunteers:[],tasks:[],donations:[],watchers:[],scriptTemplates:[],shifts:[],watcherReports:[],results:{},activityLog:[],users:[],pollingStations:[],households:[],casework:[],influencers:[],constituenciesDB:[],pollingDivisionsDB:[],campaigns:[],messages:[],captains:[],targetLists:[],supportHistory:[]};
+const CACHE={voters:[],contacts:[],drivers:[],rides:[],incidents:[],volunteers:[],tasks:[],donations:[],watchers:[],scriptTemplates:[],shifts:[],watcherReports:[],results:{},activityLog:[],users:[],pollingStations:[],households:[],casework:[],influencers:[],constituenciesDB:[],pollingDivisionsDB:[],campaigns:[],messages:[],captains:[],targetLists:[],supportHistory:[],electionHistory:[]};
 let _opQueue=[],_processing=false;
 
 function getData(){
@@ -1158,13 +1241,13 @@ function getData(){
         households:[...(CACHE.households||[])],casework:[...(CACHE.casework||[])],influencers:[...(CACHE.influencers||[])],
         constituenciesDB:[...(CACHE.constituenciesDB||[])],pollingDivisionsDB:[...(CACHE.pollingDivisionsDB||[])],
         campaigns:[...(CACHE.campaigns||[])],messages:[...(CACHE.messages||[])],captains:[...(CACHE.captains||[])],
-        targetLists:[...(CACHE.targetLists||[])],supportHistory:[...(CACHE.supportHistory||[])],users:[...(CACHE.users||[])]
+        targetLists:[...(CACHE.targetLists||[])],supportHistory:[...(CACHE.supportHistory||[])],electionHistory:[...(CACHE.electionHistory||[])],users:[...(CACHE.users||[])]
     };
 }
 
 function saveData(d){
     // Diff each table and sync to Supabase
-    const tables=['voters','contacts','drivers','rides','incidents','volunteers','tasks','donations','watchers','scriptTemplates','shifts','watcherReports','activityLog','pollingStations','households','casework','influencers','constituenciesDB','pollingDivisionsDB','campaigns','messages','captains','targetLists','supportHistory'];
+    const tables=['voters','contacts','drivers','rides','incidents','volunteers','tasks','donations','watchers','scriptTemplates','shifts','watcherReports','activityLog','pollingStations','households','casework','influencers','constituenciesDB','pollingDivisionsDB','campaigns','messages','captains','targetLists','supportHistory','electionHistory'];
     const ops=[];
     tables.forEach(key=>{
         const oldArr=CACHE[key]||[];
@@ -1184,15 +1267,26 @@ function saveData(d){
         });
         CACHE[key]=[...newArr];
     });
-    // Handle results specially (object → rows)
+    // Handle results specially (object → rows). The results table has a UNIQUE
+    // constraint on constituency_id, so upsert on THAT natural key (not id) —
+    // otherwise a row seeded/created with a different id collides on every sync.
     if(d.results&&typeof d.results==='object'&&!Array.isArray(d.results)){
         const oldRes=Array.isArray(CACHE.results)?CACHE.results:[];
+        const oldByCid={};oldRes.forEach(r=>{oldByCid[r.constituencyId]={ours:r.ours||0,theirs:r.theirs||0,other:r.other||0}});
         Object.entries(d.results).forEach(([cid,vals])=>{
-            const rec={id:'res_'+cid,constituency_id:cid,ours:vals.ours||0,theirs:vals.theirs||0,other:vals.other||0,updated_at:new Date().toISOString()};
-            ops.push({type:'upsert',table:'results',record:rec});
+            const v={ours:vals.ours||0,theirs:vals.theirs||0,other:vals.other||0};
+            const prev=oldByCid[cid];
+            // only sync constituencies whose numbers actually changed
+            if(!prev||prev.ours!==v.ours||prev.theirs!==v.theirs||prev.other!==v.other){
+                const rec={id:'res_'+cid,constituency_id:cid,ours:v.ours,theirs:v.theirs,other:v.other,updated_at:new Date().toISOString()};
+                ops.push({type:'upsert',table:'results',record:rec,onConflict:'constituency_id'});
+            }
         });
-        // Update cache
-        const resArr=Object.entries(d.results).map(([cid,vals])=>({id:'res_'+cid,constituencyId:cid,ours:vals.ours||0,theirs:vals.theirs||0,other:vals.other||0}));
+        // Update cache (preserve existing row id where one already exists)
+        const resArr=Object.entries(d.results).map(([cid,vals])=>{
+            const existing=oldRes.find(r=>r.constituencyId===cid);
+            return{id:(existing&&existing.id)||'res_'+cid,constituencyId:cid,ours:vals.ours||0,theirs:vals.theirs||0,other:vals.other||0};
+        });
         CACHE.results=resArr;
     }
     // Execute ops in background
@@ -1209,7 +1303,7 @@ async function syncOps(ops){
             const op=_opQueue.shift();
             console.log('[SYNC]',op.type,op.table,op.type==='upsert'?op.record.id:op.id);
             if(op.type==='upsert'){
-                const{error}=await SB.from(op.table).upsert(op.record,{onConflict:'id'});
+                const{error}=await SB.from(op.table).upsert(op.record,{onConflict:op.onConflict||'id'});
                 if(error){console.error('[SYNC FAIL]',op.table,error.message,op.record);toast('Sync error ('+op.table+'): '+error.message,'error')}
                 else{console.log('[SYNC OK]',op.table,op.record.id)}
             }else if(op.type==='delete'){
@@ -1260,8 +1354,8 @@ async function fetchAllRows(table){
 
 async function loadAllData(){
     updateSyncStatus('syncing');
-    const tables=['voters','contacts','drivers','rides','incidents','volunteers','tasks','donations','watchers','script_templates','shifts','watcher_reports','results','activity_log','polling_stations','households','casework','influencers','constituencies','polling_divisions','campaigns','messages','captains','target_lists','support_history'];
-    const keys=['voters','contacts','drivers','rides','incidents','volunteers','tasks','donations','watchers','scriptTemplates','shifts','watcherReports','results','activityLog','pollingStations','households','casework','influencers','constituenciesDB','pollingDivisionsDB','campaigns','messages','captains','targetLists','supportHistory'];
+    const tables=['voters','contacts','drivers','rides','incidents','volunteers','tasks','donations','watchers','script_templates','shifts','watcher_reports','results','activity_log','polling_stations','households','casework','influencers','constituencies','polling_divisions','campaigns','messages','captains','target_lists','support_history','election_history'];
+    const keys=['voters','contacts','drivers','rides','incidents','volunteers','tasks','donations','watchers','scriptTemplates','shifts','watcherReports','results','activityLog','pollingStations','households','casework','influencers','constituenciesDB','pollingDivisionsDB','campaigns','messages','captains','targetLists','supportHistory','electionHistory'];
     for(let i=0;i<tables.length;i++){
         const data=await fetchAllRows(tables[i]);
         if(data===null)continue; // table missing/unreachable — keep existing cache, don't wipe
@@ -1307,8 +1401,8 @@ async function autoSeed(){
 // ===== REALTIME SUBSCRIPTIONS =====
 function setupRealtime(){
     if(!SB)return;
-    const tables=['voters','contacts','drivers','rides','incidents','volunteers','tasks','donations','watchers','script_templates','shifts','watcher_reports','results','activity_log','polling_stations','households','casework','influencers','constituencies','polling_divisions','campaigns','messages','captains','target_lists','support_history','profiles'];
-    const keys=['voters','contacts','drivers','rides','incidents','volunteers','tasks','donations','watchers','scriptTemplates','shifts','watcherReports','results','activityLog','pollingStations','households','casework','influencers','constituenciesDB','pollingDivisionsDB','campaigns','messages','captains','targetLists','supportHistory','users'];
+    const tables=['voters','contacts','drivers','rides','incidents','volunteers','tasks','donations','watchers','script_templates','shifts','watcher_reports','results','activity_log','polling_stations','households','casework','influencers','constituencies','polling_divisions','campaigns','messages','captains','target_lists','support_history','election_history','profiles'];
+    const keys=['voters','contacts','drivers','rides','incidents','volunteers','tasks','donations','watchers','scriptTemplates','shifts','watcherReports','results','activityLog','pollingStations','households','casework','influencers','constituenciesDB','pollingDivisionsDB','campaigns','messages','captains','targetLists','supportHistory','electionHistory','users'];
     SB.channel('campaign-realtime')
     .on('postgres_changes',{event:'*',schema:'public'},payload=>{
         const tbl=payload.table;
@@ -1739,8 +1833,8 @@ async function handleSetup(e){
 }
 
 // ===== NAV =====
-function showView(v){const gate={comms:'comms',export:'export',users:'credentials'};if(gate[v]&&!can(gate[v])){toast('Your role does not have access to that section','error');return}document.querySelectorAll('.view').forEach(el=>el.classList.add('hidden'));const el=document.getElementById(v+'View');if(el){el.classList.remove('hidden');AS.currentView=v;document.querySelectorAll('.nav-item').forEach(i=>i.classList.toggle('active',i.dataset.view===v));const t={dashboard:'Dashboard',analytics:'Analytics',command:'Command Center',islands:'Island Management',constituencies:'Constituencies',voters:'Voter Database',contacts:'Contact Tracking',comms:'Communication Hub',canvassing:'Canvassing',gotv:'GOTV Tracking',captains:'Cell Captains',gotvRace:'GOTV Race',overseas:'Overseas Voters',targetlists:'Target Lists',checkin:'Rapid Check-in',queue:'Contact Queue',dispatch:'Transportation',watchers:'Poll Watchers',incidents:'Incidents',results:'Results Tracking',volunteers:'Volunteers',shifts:'Shift Schedule',tasks:'Tasks',donations:'Donations',stations:'Voting Centers',households:'Households',casework:'Constituent Service',influencers:'Community Leaders',pdsManage:'Polling Stations',users:'Users',export:'Export/Import',activity:'Activity Log'};document.getElementById('viewTitle').textContent=t[v]||v;document.querySelectorAll('.mobile-quicknav button[data-qnav]').forEach(b=>b.classList.toggle('active',b.dataset.qnav===v));updateScopeBanner();refreshView(v);closeMobileSidebar();setTimeout(()=>{try{window.dispatchEvent(new Event('resize'))}catch(e){}},100)}}
-function refreshView(v){const m={dashboard:renderDashboard,analytics:renderAnalytics,command:renderCC,islands:renderIslands,constituencies:renderConsts,voters:renderVoters,contacts:renderContacts,comms:renderComms,canvassing:renderCanvassing,gotv:renderGOTV,captains:renderCaptains,gotvRace:renderGOTVRace,overseas:renderOverseas,targetlists:renderTargetlists,checkin:renderCheckin,queue:renderQueue,dispatch:renderDispatch,watchers:renderWatchers,incidents:renderIncidents,results:renderResults,volunteers:renderVols,shifts:renderShifts,tasks:renderTasks,donations:renderDonations,stations:renderStations,households:renderHouseholds,casework:renderCasework,influencers:renderInfluencers,pdsManage:renderPDsManage,users:renderUsers,activity:renderActivity};if(m[v])m[v]()}
+function showView(v){const gate={comms:'comms',export:'export',users:'credentials'};if(gate[v]&&!can(gate[v])){toast('Your role does not have access to that section','error');return}document.querySelectorAll('.view').forEach(el=>el.classList.add('hidden'));const el=document.getElementById(v+'View');if(el){el.classList.remove('hidden');AS.currentView=v;document.querySelectorAll('.nav-item').forEach(i=>i.classList.toggle('active',i.dataset.view===v));const t={dashboard:'Dashboard',analytics:'Analytics',forecast:'Election Forecast',command:'Command Center',islands:'Island Management',constituencies:'Constituencies',voters:'Voter Database',contacts:'Contact Tracking',comms:'Communication Hub',canvassing:'Canvassing',gotv:'GOTV Tracking',captains:'Cell Captains',gotvRace:'GOTV Race',overseas:'Overseas Voters',targetlists:'Target Lists',checkin:'Rapid Check-in',queue:'Contact Queue',dispatch:'Transportation',watchers:'Poll Watchers',incidents:'Incidents',results:'Results Tracking',volunteers:'Volunteers',shifts:'Shift Schedule',tasks:'Tasks',donations:'Donations',stations:'Voting Centers',households:'Households',casework:'Constituent Service',influencers:'Community Leaders',pdsManage:'Polling Stations',users:'Users',export:'Export/Import',activity:'Activity Log'};document.getElementById('viewTitle').textContent=t[v]||v;document.querySelectorAll('.mobile-quicknav button[data-qnav]').forEach(b=>b.classList.toggle('active',b.dataset.qnav===v));updateScopeBanner();refreshView(v);closeMobileSidebar();setTimeout(()=>{try{window.dispatchEvent(new Event('resize'))}catch(e){}},100)}}
+function refreshView(v){const m={dashboard:renderDashboard,analytics:renderAnalytics,forecast:renderForecast,command:renderCC,islands:renderIslands,constituencies:renderConsts,voters:renderVoters,contacts:renderContacts,comms:renderComms,canvassing:renderCanvassing,gotv:renderGOTV,captains:renderCaptains,gotvRace:renderGOTVRace,overseas:renderOverseas,targetlists:renderTargetlists,checkin:renderCheckin,queue:renderQueue,dispatch:renderDispatch,watchers:renderWatchers,incidents:renderIncidents,results:renderResults,volunteers:renderVols,shifts:renderShifts,tasks:renderTasks,donations:renderDonations,stations:renderStations,households:renderHouseholds,casework:renderCasework,influencers:renderInfluencers,pdsManage:renderPDsManage,users:renderUsers,activity:renderActivity};if(m[v])m[v]()}
 function setIslandFilter(i){
     AS.islandFilter=i;
     localStorage.setItem('islandScope',i);
@@ -2402,7 +2496,15 @@ function genVoters(){
 }
 
 // EXPORT/IMPORT
-function exportVotersCSV(){if(!can('export')){toast('Your role cannot export data','error');return}const d=getData(),h='firstName,lastName,voterId,constituency,pd,island,phone,address,category,commitment,hasVoted,contactCount\n',rows=d.voters.map(v=>`${v.firstName},${v.lastName},${v.voterId},${v.constituencyId},${v.pollingDivisionId},${v.island},${v.phone||''},${(v.address||'').replace(/,/g,' ')},${v.category},${v.commitment||''},${v.hasVoted},${v.contactCount}`).join('\n');downloadFile('voters_export.csv',h+rows,'text/csv');addActivity('exported voters CSV','📤');toast('Exported','success')}
+function exportVotersCSV(){
+    if(!can('export')){toast('Your role cannot export data','error');return}
+    const d=getData();
+    const esc=s=>{s=(s===undefined||s===null)?'':String(s);return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s};
+    const cols=['firstName','middleName','lastName','alias','voterId','constituency','pollingStation','island','phone','email','address','occupation','gender','supportLevel','category','commitment','emotionalBloc','emotionalState','triggerIssue','hasVoted','contactCount','lastContactDate','isOverseas','overseasLocation','returnStatus','expectedArrival','needsAirportPickup','livesOutside','residenceLocation','residenceConstituency','targetList'];
+    const h=cols.join(',')+'\n';
+    const rows=d.voters.map(v=>[v.firstName,v.middleName,v.lastName,v.alias,v.voterId,v.constituencyId,v.pollingDivisionId,v.island,v.phone,v.email,v.address,v.occupation,v.gender,v.supportLevel||'',v.category,v.commitment,v.emotionalBloc,v.emotionalState,v.triggerIssue,v.hasVoted,v.contactCount,v.lastContactDate,v.isOverseas?'Yes':'No',v.overseasLocation,v.returnStatus,v.expectedArrival,v.needsAirportPickup?'Yes':'No',v.livesOutside?'Yes':'No',v.residenceLocation,v.residenceConstituency,v.targetList].map(esc).join(',')).join('\n');
+    downloadFile('voters_export.csv',h+rows,'text/csv');addActivity('exported voters CSV','📤');toast('Exported '+d.voters.length+' voters','success');
+}
 function exportContactsCSV(){const d=getData(),h='date,voter,method,response,categoryChange,notes\n',rows=d.contacts.map(c=>{const v=d.voters.find(x=>x.id===c.voterId);return`${c.createdAt},${v?v.firstName+' '+v.lastName:'Unknown'},${c.method},${c.response},${c.categoryChange||''},${(c.notes||'').replace(/,/g,' ')}`}).join('\n');downloadFile('contacts_export.csv',h+rows,'text/csv');toast('Exported','success')}
 function exportGOTVList(){const d=getData(),sup=d.voters.filter(v=>v.category==='Solid'||v.category==='Soft'),h='firstName,lastName,voterId,constituency,pd,phone,category,commitment,hasVoted,rideNeeded,rideStatus\n',rows=sup.map(v=>`${v.firstName},${v.lastName},${v.voterId},${v.constituencyId},${v.pollingDivisionId},${v.phone||''},${v.category},${v.commitment||''},${v.hasVoted},${v.rideNeeded},${v.rideStatus||''}`).join('\n');downloadFile('gotv_list.csv',h+rows,'text/csv');toast('Exported','success')}
 function exportFullBackup(){const d=getData();downloadFile('campaign_backup_v8.json',JSON.stringify(d,null,2),'application/json');addActivity('full backup exported','💾');toast('Backup exported','success')}
@@ -2494,7 +2596,7 @@ function renderDashboard(){
     Plotly.react('dashContactTrend',[{type:'scatter',mode:'lines',fill:'tozeroy',x:days,y:dayCounts,line:{color:'#0284c7',width:2},fillcolor:'rgba(2,132,199,.15)'}],Object.assign({xaxis:{type:'date'}},plotlyTheme()),PLOTLY_CONFIG);
     // GOTV funnel
     const funnelBase=vs.length,funnelSup=supporters,funnelContacted=supForTurnout.filter(v=>(v.contactCount||0)>0).length,funnelCommitted=supForTurnout.filter(v=>['Definite','Likely'].includes(v.commitment)).length,funnelVoted=vot;
-    Plotly.react('dashFunnel',[{type:'funnel',y:['Total Base','Supporters','Contacted','Committed','Voted'],x:[funnelBase,funnelSup,funnelContacted,funnelCommitted,funnelVoted],marker:{color:['#1e3a5f','#0284c7','#0891b2','#059669','#7c3aed']},textinfo:'value+percent initial'}],Object.assign({margin:{t:20,r:15,b:20,l:80}},plotlyTheme()),PLOTLY_CONFIG);
+    Plotly.react('dashFunnel',[{type:'funnel',y:['Total Base','Supporters','Contacted','Committed','Voted'],x:[funnelBase,funnelSup,funnelContacted,funnelCommitted,funnelVoted],marker:{color:['#1e3a5f','#0284c7','#0891b2','#059669','#7c3aed']},textinfo:'value+percent initial'}],Object.assign(plotlyTheme(),{margin:{t:25,r:20,b:25,l:135},yaxis:{automargin:true}}),PLOTLY_CONFIG);
     // Overseas pipeline summary (only show if there are overseas voters)
     const ov=vs.filter(v=>v.isOverseas);
     const ovCard=document.getElementById('dashOverseasCard');
@@ -2605,6 +2707,285 @@ function dashRenderCompare(ids){
     setTimeout(()=>Plotly.Plots.resize('dashCompareChart'),50);
 }
 
+// ===== ELECTION FORECAST & PROJECTION MODEL =====
+const FC_DEFAULTS={turnoutAdj:0,labourShift:0,undecidedBreak:50,gotvBoost:0,economicMood:0};
+let FC_SCENARIO=Object.assign({},FC_DEFAULTS);
+const FC_SLIDERS=[
+    {key:'turnoutAdj',label:'Turnout adjustment',min:-15,max:15,unit:'pts',hint:'Overall turnout higher/lower'},
+    {key:'labourShift',label:'Labour support shift',min:-15,max:15,unit:'pts',hint:'+ favours Labour, − favours opposition'},
+    {key:'undecidedBreak',label:'Undecided → Labour',min:0,max:100,unit:'%',hint:'Share of undecideds breaking to Labour'},
+    {key:'gotvBoost',label:'GOTV effectiveness',min:0,max:15,unit:'pts',hint:'Extra turnout from get-out-the-vote'},
+    {key:'economicMood',label:'Economic mood',min:-10,max:10,unit:'',hint:'+ helps incumbent Labour, − hurts'}
+];
+function fcSupportOf(v){return supportOf(v)}
+// Constituency-level history, verified rows only (excludes NATIONAL summary rows)
+function historyFor(constId){return (CACHE.electionHistory||[]).filter(h=>h.constituencyId===constId&&h.verified!==false)}
+function fcLastLabour(constId){
+    // Most recent Labour record that actually has a vote share (real data point)
+    const labs=historyFor(constId).filter(h=>(h.party||'').toLowerCase()==='labour'&&h.voteShare!=null).sort((a,b)=>b.electionYear-a.electionYear);
+    return labs.length?labs[0]:null;
+}
+// Core projection model
+function forecastModel(constId,sc){
+    sc=sc||FC_SCENARIO;
+    const vs=(CACHE.voters||[]).filter(v=>v.constituencyId===constId);
+    if(!vs.length)return null;
+    const labProbBase={Strong:0.97,Medium:0.85,Soft:0.65,Undecided:sc.undecidedBreak/100,Opposition:0.03,Unknown:0.45};
+    const turnBase={Strong:0.85,Medium:0.80,Soft:0.72,Undecided:0.60,Opposition:0.70,Unknown:0.55};
+    const commitMult={Definite:1.10,Likely:1.05,Maybe:0.95,Unlikely:0.85};
+    const shift=sc.labourShift/100, econ=sc.economicMood/100*0.5, tAdj=sc.turnoutAdj/100, gotv=sc.gotvBoost/100;
+    let projCast=0,projLab=0,projOpp=0,undecidedCount=0,overseasCount=0,contacted=0;
+    vs.forEach(v=>{
+        const s=fcSupportOf(v);
+        if(s==='Undecided')undecidedCount++;
+        if((v.contactCount||0)>0)contacted++;
+        let lp=labProbBase[s]!==undefined?labProbBase[s]:0.45;
+        lp=Math.max(0,Math.min(1,lp+shift+econ));
+        let tp=(turnBase[s]||0.6)*(commitMult[v.commitment]||1.0);
+        tp=Math.max(0,Math.min(0.99,tp+tAdj+gotv));
+        if(v.isOverseas){overseasCount++;tp*= (RETURN_WEIGHT[v.returnStatus||'Unknown']!==undefined?RETURN_WEIGHT[v.returnStatus||'Unknown']:0.1)}
+        projCast+=tp; projLab+=tp*lp; projOpp+=tp*(1-lp);
+    });
+    const electorate=vs.length;
+    const projTurnout=electorate?projCast/electorate*100:0;
+    const twoParty=(projLab+projOpp)||1;
+    const labShare=projLab/twoParty*100, oppShare=projOpp/twoParty*100;
+    const lead=labShare-oppShare;
+    const winner=lead>=0?'Labour':'Opposition';
+    const contactPct=electorate?contacted/electorate*100:0;
+    // Confidence: margin size + data coverage, capped
+    let conf=Math.round(Math.max(5,Math.min(95, 35 + Math.abs(lead)*1.4 + contactPct*0.35)));
+    const confBand=conf>=70?'High':conf>=50?'Moderate':'Low';
+    // Historical comparison
+    const lastLab=fcLastLabour(constId);
+    const swing=lastLab&&lastLab.voteShare!=null?labShare-lastLab.voteShare:null;
+    // Factors
+    const factors=[];
+    const supporters=vs.filter(v=>['Strong','Medium','Soft'].includes(fcSupportOf(v))).length;
+    factors.push({label:'Current support base',detail:supporters+' of '+vs.length+' ('+Math.round(supporters/vs.length*100)+'%) lean Labour',impact:supporters/vs.length>=0.5?'pos':'neg'});
+    factors.push({label:'Projected turnout',detail:projTurnout.toFixed(1)+'% of registered voters expected to vote',impact:projTurnout>=60?'pos':projTurnout>=50?'neutral':'neg'});
+    if(lastLab)factors.push({label:'Historical lean ('+lastLab.electionYear+')',detail:'Labour took '+(lastLab.voteShare!=null?lastLab.voteShare+'%':'—')+' last time'+(swing!=null?' · projected swing '+(swing>=0?'+':'')+swing.toFixed(1)+' pts':''),impact:lastLab.isWinner?'pos':'neg'});
+    factors.push({label:'Undecided pool',detail:undecidedCount+' undecided ('+Math.round(undecidedCount/vs.length*100)+'%); modelled '+sc.undecidedBreak+'% to Labour',impact:'neutral'});
+    if(overseasCount)factors.push({label:'Overseas voters',detail:overseasCount+' diaspora voters, weighted by confirmed return status',impact:'neutral'});
+    factors.push({label:'Contact penetration',detail:Math.round(contactPct)+'% contacted — '+(contactPct>=40?'solid data confidence':'thin data, projection less certain'),impact:contactPct>=40?'pos':'neg'});
+    // Risks / recommended focus
+    const risks=[];
+    if(Math.abs(lead)<6)risks.push('🔴 Tight race — projected lead is only '+Math.abs(lead).toFixed(1)+' pts. Every vote matters; prioritise GOTV.');
+    if(undecidedCount/vs.length>0.18)risks.push('🟠 Large undecided bloc ('+Math.round(undecidedCount/vs.length*100)+'%). Persuasion canvassing could swing the result.');
+    if(contactPct<35)risks.push('🟠 Low contact penetration ('+Math.round(contactPct)+'%). Increase canvassing to improve data and turnout.');
+    if(swing!=null&&swing<-3)risks.push('🔴 Negative swing vs '+lastLab.electionYear+' ('+swing.toFixed(1)+' pts). Investigate softening support.');
+    const overseasUnconf=vs.filter(v=>v.isOverseas&&!['Confirmed Coming','Booked','Arrived'].includes(v.returnStatus)).length;
+    if(overseasUnconf>0)risks.push('🟠 '+overseasUnconf+' overseas supporters not yet confirmed returning. Follow up to lock in those votes.');
+    if(projTurnout<55)risks.push('🟠 Projected turnout below 55%. A strong GOTV push is critical.');
+    if(!risks.length)risks.push('🟢 No major red flags at current assumptions. Maintain momentum and protect the base.');
+    return{constId,vs,electorate,projCast:Math.round(projCast),projLab:Math.round(projLab),projOpp:Math.round(projOpp),
+        projTurnout,labShare,oppShare,lead,winner,conf,confBand,swing,lastLab,factors,risks,undecidedCount,overseasCount,contactPct,supporters};
+}
+function populateFcConst(){
+    const sel=document.getElementById('fcConst');if(!sel)return;
+    const cur=sel.value||AS.dashConst||(filteredConsts()[0]||{}).id||'';
+    sel.innerHTML=constOptgroups(cur);
+    if(!sel.value&&filteredConsts().length)sel.value=cur||filteredConsts()[0].id;
+}
+function renderForecast(){
+    populateFcConst();
+    // sliders
+    const sl=document.getElementById('fcSliders');
+    if(sl&&!sl.dataset.built){
+        sl.innerHTML=FC_SLIDERS.map(s=>'<div class="form-group"><label style="font-size:.75rem">'+s.label+': <strong id="fcv_'+s.key+'">'+FC_SCENARIO[s.key]+'</strong> '+s.unit+'</label><input type="range" min="'+s.min+'" max="'+s.max+'" value="'+FC_SCENARIO[s.key]+'" oninput="onScenario(\''+s.key+'\',this.value)" style="width:100%"><div class="text-muted" style="font-size:.625rem">'+s.hint+'</div></div>').join('');
+        sl.dataset.built='1';
+    }
+    const constId=document.getElementById('fcConst').value;
+    const f=forecastModel(constId);
+    const winBanner=document.getElementById('fcWinnerBanner');
+    if(!f){
+        document.getElementById('fcKPIs').innerHTML='';
+        winBanner.innerHTML='<div class="card-body"><p class="text-muted">No voters in this constituency yet. Add voters or run the demo seed to see a projection.</p></div>';
+        ['fcShareChart','fcHistChart'].forEach(id=>{try{Plotly.purge(id)}catch(e){}});
+        document.getElementById('fcFactors').innerHTML='';document.getElementById('fcRisks').innerHTML='';
+        document.getElementById('fcHistComparison').innerHTML='';document.getElementById('fcHistTable').innerHTML='';
+        return;
+    }
+    // KPIs
+    document.getElementById('fcKPIs').innerHTML=
+        kpiCard(f.projTurnout.toFixed(1)+'%','Projected Turnout','var(--info)',f.projCast.toLocaleString()+' of '+f.electorate.toLocaleString())+
+        kpiCard(f.labShare.toFixed(1)+'%','Projected Labour Share','var(--primary)','two-party')+
+        kpiCard((f.lead>=0?'+':'')+f.lead.toFixed(1)+' pts','Projected Lead',f.lead>=0?'var(--success)':'var(--danger)',f.winner+' ahead')+
+        kpiCard(f.confBand,'Confidence','var(--purple)',f.conf+'/100')+
+        kpiCard(f.swing!=null?((f.swing>=0?'+':'')+f.swing.toFixed(1)+' pts'):'—','Swing vs Last',f.swing==null?'var(--text-muted)':f.swing>=0?'var(--success)':'var(--danger)',f.lastLab?'vs '+f.lastLab.electionYear:'no history')+
+        kpiCard(f.supporters.toLocaleString(),'Lean-Labour Voters','var(--success)',Math.round(f.supporters/f.vs.length*100)+'% of base');
+    // Winner banner
+    const c=getC(constId);
+    winBanner.className='card mb-3';
+    winBanner.style.background=f.winner==='Labour'?'linear-gradient(135deg,var(--primary),var(--primary-light))':'linear-gradient(135deg,#7f1d1d,#b91c1c)';
+    winBanner.style.color='#fff';
+    winBanner.innerHTML='<div class="card-body" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem"><div><div style="font-size:.75rem;opacity:.85;text-transform:uppercase;letter-spacing:.05em">Projected Winner — '+constId+(c?' '+c.name:'')+'</div><div style="font-size:2rem;font-weight:800;line-height:1.1">'+(f.winner==='Labour'?'🌹 Labour':'Opposition')+'</div><div style="font-size:.8125rem;opacity:.9;margin-top:.25rem">'+f.labShare.toFixed(1)+'% Labour vs '+f.oppShare.toFixed(1)+'% Opposition · '+f.confBand+' confidence ('+f.conf+'/100)</div></div><div style="text-align:right;font-size:.75rem;opacity:.9">Projected cast: '+f.projCast.toLocaleString()+'<br>Labour: '+f.projLab.toLocaleString()+' · Opp: '+f.projOpp.toLocaleString()+'</div></div>';
+    // Two-party share chart
+    Plotly.react('fcShareChart',[{type:'bar',x:['Labour','Opposition'],y:[f.labShare,f.oppShare],marker:{color:['#1e3a5f','#b91c1c']},text:[f.labShare.toFixed(1)+'%',f.oppShare.toFixed(1)+'%'],textposition:'auto'}],Object.assign(plotlyTheme(),{yaxis:{ticksuffix:'%',range:[0,100],automargin:true},margin:{t:20,r:15,b:40,l:50}}),PLOTLY_CONFIG);
+    // History vs projection chart
+    const labHist=historyFor(constId).filter(h=>(h.party||'').toLowerCase()==='labour').sort((a,b)=>a.electionYear-b.electionYear);
+    const xs=labHist.map(h=>String(h.electionYear)).concat(['Projected']);
+    const ys=labHist.map(h=>h.voteShare).concat([+f.labShare.toFixed(1)]);
+    const colors=labHist.map(()=>'#0284c7').concat(['#059669']);
+    Plotly.react('fcHistChart',[{type:'bar',x:xs,y:ys,marker:{color:colors},text:ys.map(y=>y!=null?y+'%':''),textposition:'auto'}],Object.assign(plotlyTheme(),{yaxis:{ticksuffix:'%',range:[0,100],automargin:true},margin:{t:20,r:15,b:40,l:50}}),PLOTLY_CONFIG);
+    // Factors
+    document.getElementById('fcFactors').innerHTML=f.factors.map(x=>{const col=x.impact==='pos'?'var(--success)':x.impact==='neg'?'var(--danger)':'var(--text-muted)';const ic=x.impact==='pos'?'▲':x.impact==='neg'?'▼':'•';return '<div style="display:flex;gap:.5rem;padding:.5rem 0;border-bottom:1px solid var(--border)"><span style="color:'+col+';font-weight:700">'+ic+'</span><div><div style="font-weight:600;font-size:.8125rem">'+x.label+'</div><div class="text-muted" style="font-size:.75rem">'+x.detail+'</div></div></div>'}).join('');
+    // Risks
+    document.getElementById('fcRisks').innerHTML=f.risks.map(r=>'<div style="padding:.5rem 0;border-bottom:1px solid var(--border);font-size:.8125rem">'+r+'</div>').join('');
+    // Historical comparison + table
+    renderFcHistory(constId,f);
+}
+function renderFcHistory(constId,f){
+    const rows=historyFor(constId).sort((a,b)=>b.electionYear-a.electionYear||((a.party||'')<(b.party||'')?-1:1));
+    const comp=document.getElementById('fcHistComparison');
+    if(f&&f.lastLab){
+        comp.innerHTML='<div style="font-size:.8125rem"><span class="badge badge-info" style="font-size:.6rem">ACTUAL</span> Last verified result ('+f.lastLab.electionYear+'): Labour <strong>'+(f.lastLab.voteShare!=null?f.lastLab.voteShare+'%':'—')+'</strong> ('+(f.lastLab.isWinner?'Won':'Lost')+'). &nbsp;<span class="badge" style="background:var(--success);color:#fff;font-size:.6rem">PROJECTED</span> Current projection: <strong>'+f.labShare.toFixed(1)+'%</strong> → swing '+(f.swing!=null?'<strong style="color:'+(f.swing>=0?'var(--success)':'var(--danger)')+'">'+(f.swing>=0?'+':'')+f.swing.toFixed(1)+' pts</strong>':'—')+'.</div>';
+    }else{comp.innerHTML='<p class="text-muted" style="font-size:.8125rem">No verified Labour vote share on record for this constituency. Winners are stored, but constituency-level vote counts for 2015/2020 were not published in public sources — enter them from official Electoral Office records via "Add Historical Result".</p>'}
+    const tb=document.getElementById('fcHistTable');
+    const hdr='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem"><span class="text-muted" style="font-size:.6875rem">All figures are ACTUAL verified results — never projections.</span><button class="btn btn-xs btn-outline requires-export" onclick="exportHistoryCSV(\''+constId+'\')">📤 Export History CSV</button></div>';
+    if(!rows.length){tb.innerHTML='';document.getElementById('fcHistComparison').insertAdjacentHTML('afterend','');return}
+    tb.innerHTML='<thead><tr><th>Year</th><th>Party</th><th>Candidate</th><th>Votes</th><th>Share</th><th>Result</th><th>Turnout</th><th>Confidence</th><th>Source</th><th></th></tr></thead><tbody>'+
+        rows.map(h=>{
+            const conf=h.verified===false?'<span class="badge badge-warning" style="font-size:.6rem">Unverified</span>':'<span class="badge badge-success" style="font-size:.6rem">'+(h.confidence||'High')+'</span>';
+            const src=h.sourceUrl?'<a href="'+h.sourceUrl+'" target="_blank" rel="noopener" style="font-size:.6875rem">'+(h.sourceName||'source')+'</a>':(h.sourceName||'—');
+            const note=h.notes?' title="'+(''+h.notes).replace(/"/g,'&quot;')+'"':'';
+            return '<tr'+note+'><td>'+h.electionYear+'</td><td><strong>'+h.party+'</strong>'+(h.isSample?' <span class="badge badge-warning" style="font-size:.6rem">sample</span>':'')+'</td><td>'+(h.candidate||'—')+'</td><td>'+(h.votes!=null?(+h.votes).toLocaleString():'<span class="text-muted">n/a</span>')+'</td><td>'+(h.voteShare!=null?h.voteShare+'%':'<span class="text-muted">n/a</span>')+'</td><td>'+(h.result||'—')+'</td><td>'+(h.turnout!=null?h.turnout+'%':'—')+'</td><td>'+conf+'</td><td>'+src+'</td><td style="white-space:nowrap"><button class="btn btn-xs btn-outline" onclick="editHistory(\''+h.id+'\')">✏️</button> <button class="btn btn-xs btn-danger requires-delete-voters" onclick="deleteHistory(\''+h.id+'\')">🗑️</button></td></tr>';
+        }).join('')+'</tbody>';
+    // inject the export header once above the table
+    const card=tb.closest('.card-body');
+    if(card&&!card.querySelector('.fcHistHdr')){const div=document.createElement('div');div.className='fcHistHdr';div.innerHTML=hdr;tb.parentNode.insertBefore(div,tb)}
+}
+function exportHistoryCSV(constId){
+    if(!can('export')){toast('Your role cannot export data','error');return}
+    const rows=historyFor(constId).sort((a,b)=>a.electionYear-b.electionYear);
+    const esc=s=>{s=(s==null)?'':String(s);return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s};
+    const cols=['election_year','election_date','election_type','constituency','party','candidate','votes','vote_share','is_winner','result','turnout','total_electorate','total_votes_cast','margin','confidence','verified','source_name','source_url','notes'];
+    const h=cols.join(',')+'\n';
+    const body=rows.map(r=>[r.electionYear,r.electionDate,r.electionType,r.constituencyId,r.party,r.candidate,r.votes,r.voteShare,r.isWinner,r.result,r.turnout,r.totalElectorate,r.totalVotesCast,r.margin,r.confidence,r.verified,r.sourceName,r.sourceUrl,r.notes].map(esc).join(',')).join('\n');
+    downloadFile('election_history_'+constId+'.csv',h+body,'text/csv');toast('Exported '+rows.length+' records','success');
+}
+function onScenario(key,val){
+    FC_SCENARIO[key]=parseFloat(val);
+    const lbl=document.getElementById('fcv_'+key);if(lbl)lbl.textContent=val;
+    renderForecast();
+}
+function resetScenario(){
+    FC_SCENARIO=Object.assign({},FC_DEFAULTS);
+    FC_SLIDERS.forEach(s=>{const inp=document.querySelector('#fcSliders input[oninput*="'+s.key+'"]');if(inp)inp.value=FC_DEFAULTS[s.key];const lbl=document.getElementById('fcv_'+s.key);if(lbl)lbl.textContent=FC_DEFAULTS[s.key]});
+    renderForecast();
+}
+// Historical CRUD
+function openHistoryModal(){
+    document.getElementById('histId').value='';
+    document.getElementById('histModalTitle').textContent='Add Historical Result';
+    ['histYear','histParty','histCandidate','histVotes','histShare','histElectorate','histCast','histMargin','histNotes'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('histType').value='General';document.getElementById('histResult').value='';
+    document.getElementById('histSourceName').value='';document.getElementById('histSourceUrl').value='';
+    document.getElementById('histConfidence').value='High';document.getElementById('histVerified').checked=true;
+    const hc=document.getElementById('histConst');hc.innerHTML=CONSTITUENCIES.map(c=>'<option value="'+c.id+'">'+c.id+' - '+c.name+'</option>').join('');
+    hc.value=document.getElementById('fcConst').value||CONSTITUENCIES[0].id;
+    openModal('historyModal');
+}
+function editHistory(id){
+    const h=(CACHE.electionHistory||[]).find(x=>x.id===id);if(!h)return;
+    openHistoryModal();
+    document.getElementById('histId').value=h.id;
+    document.getElementById('histModalTitle').textContent='Edit Historical Result';
+    document.getElementById('histYear').value=h.electionYear||'';
+    document.getElementById('histType').value=h.electionType||'General';
+    document.getElementById('histConst').value=h.constituencyId||'';
+    document.getElementById('histParty').value=h.party||'';
+    document.getElementById('histCandidate').value=h.candidate||'';
+    document.getElementById('histVotes').value=h.votes!=null?h.votes:'';
+    document.getElementById('histShare').value=h.voteShare!=null?h.voteShare:'';
+    document.getElementById('histElectorate').value=h.totalElectorate!=null?h.totalElectorate:'';
+    document.getElementById('histCast').value=h.totalVotesCast!=null?h.totalVotesCast:'';
+    document.getElementById('histResult').value=h.result||'';
+    document.getElementById('histMargin').value=h.margin!=null?h.margin:'';
+    document.getElementById('histNotes').value=h.notes||'';
+    document.getElementById('histSourceName').value=h.sourceName||'';
+    document.getElementById('histSourceUrl').value=h.sourceUrl||'';
+    document.getElementById('histConfidence').value=h.confidence||'High';
+    document.getElementById('histVerified').checked=h.verified!==false;
+}
+function saveHistory(){
+    const year=parseInt(document.getElementById('histYear').value);
+    const constId=document.getElementById('histConst').value;
+    const party=document.getElementById('histParty').value.trim();
+    if(!year||!constId||!party){toast('Year, constituency and party are required','error');return}
+    const cast=parseInt(document.getElementById('histCast').value)||null;
+    const elect=parseInt(document.getElementById('histElectorate').value)||null;
+    const votes=parseInt(document.getElementById('histVotes').value);
+    let share=parseFloat(document.getElementById('histShare').value);
+    if((isNaN(share)||!share)&&!isNaN(votes)&&cast)share=Math.round(votes/cast*1000)/10; // derive share if blank
+    const turnout=(cast&&elect)?Math.round(cast/elect*1000)/10:null;
+    const id=document.getElementById('histId').value;
+    const d=getData();if(!d.electionHistory)d.electionHistory=[];
+    const rec={id:id||genId(),electionYear:year,electionType:document.getElementById('histType').value,constituencyId:constId,party:party,
+        candidate:document.getElementById('histCandidate').value.trim()||null,
+        votes:isNaN(votes)?null:votes,voteShare:isNaN(share)?null:share,
+        isWinner:document.getElementById('histResult').value==='Won',
+        totalElectorate:elect,totalVotesCast:cast,turnout:turnout,
+        result:document.getElementById('histResult').value||null,
+        margin:parseFloat(document.getElementById('histMargin').value)||null,
+        sourceName:document.getElementById('histSourceName').value.trim()||null,
+        sourceUrl:document.getElementById('histSourceUrl').value.trim()||null,
+        confidence:document.getElementById('histConfidence').value,
+        verified:document.getElementById('histVerified').checked,
+        retrievedDate:new Date().toISOString().split('T')[0],
+        isSample:false,notes:document.getElementById('histNotes').value.trim()||null};
+    if(id){const i=d.electionHistory.findIndex(x=>x.id===id);if(i>=0)d.electionHistory[i]=Object.assign({},d.electionHistory[i],rec)}
+    else d.electionHistory.push(rec);
+    saveData(d);addActivity((id?'updated':'added')+' historical result '+constId+' '+year,'📜');toast('Historical result saved','success');
+    closeModal('historyModal');renderForecast();
+}
+function deleteHistory(id){
+    if(!can('deleteVoters')){toast('Your role cannot delete records','error');return}
+    const d=getData(),h=(d.electionHistory||[]).find(x=>x.id===id);if(!h)return;
+    if(!confirm('Delete the '+h.electionYear+' '+h.party+' record for '+h.constituencyId+'?'))return;
+    d.electionHistory=d.electionHistory.filter(x=>x.id!==id);
+    saveData(d);toast('Deleted','success');renderForecast();
+}
+function exportForecastReport(){
+    if(!can('export')){toast('Your role cannot export data','error');return}
+    const constId=document.getElementById('fcConst').value;
+    const f=forecastModel(constId);
+    if(!f){toast('No data to forecast for this constituency','error');return}
+    const c=getC(constId)||{name:''};
+    const now=new Date().toLocaleString();
+    // sentiment: emotional blocs + support distribution
+    const blocCounts={};f.vs.forEach(v=>{if(v.emotionalBloc)blocCounts[v.emotionalBloc]=(blocCounts[v.emotionalBloc]||0)+1});
+    const topBlocs=Object.entries(blocCounts).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    const supLevels=['Strong','Medium','Soft','Undecided','Opposition','Unknown'];
+    const supCounts={};supLevels.forEach(l=>supCounts[l]=f.vs.filter(v=>fcSupportOf(v)===l).length);
+    // support movement from support_history
+    const hist=(CACHE.supportHistory||[]).filter(h=>{const v=(CACHE.voters||[]).find(x=>x.id===h.voterId);return v&&v.constituencyId===constId});
+    const histRows=historyFor(constId).sort((a,b)=>b.electionYear-a.electionYear);
+    const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>Forecast — '+esc(constId)+'</title>'+
+        '<style>body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;color:#1e293b;max-width:840px;margin:24px auto;padding:0 20px;line-height:1.5}h1{color:#1e3a5f;margin-bottom:0}h2{color:#1e3a5f;border-bottom:2px solid #1e3a5f;padding-bottom:4px;margin-top:28px}.muted{color:#64748b;font-size:13px}.big{font-size:30px;font-weight:800}table{width:100%;border-collapse:collapse;margin:8px 0}th,td{border:1px solid #cbd5e1;padding:6px 8px;text-align:left;font-size:13px}th{background:#f1f5f9}.kpi{display:inline-block;border:1px solid #cbd5e1;border-radius:8px;padding:10px 16px;margin:4px 8px 4px 0}.win{background:'+(f.winner==='Labour'?'#1e3a5f':'#b91c1c')+';color:#fff;padding:14px 18px;border-radius:8px;margin:12px 0}.pos{color:#059669}.neg{color:#dc2626}li{margin:4px 0}@media print{body{margin:0}}</style></head><body>'+
+        '<h1>Election Forecast Report</h1><div class="muted">'+esc(constId)+' — '+esc(c.name)+' · Generated '+esc(now)+'</div>'+
+        '<div class="win"><div style="font-size:12px;text-transform:uppercase;opacity:.85">Projected Winner</div><div class="big">'+(f.winner==='Labour'?'Labour 🌹':'Opposition')+'</div><div>'+f.labShare.toFixed(1)+'% Labour vs '+f.oppShare.toFixed(1)+'% Opposition · '+f.confBand+' confidence ('+f.conf+'/100)</div></div>'+
+        '<div><span class="kpi"><b>'+f.projTurnout.toFixed(1)+'%</b><br><span class="muted">Projected turnout</span></span>'+
+        '<span class="kpi"><b>'+f.projCast.toLocaleString()+'</b><br><span class="muted">Projected votes cast</span></span>'+
+        '<span class="kpi"><b>'+f.projLab.toLocaleString()+' / '+f.projOpp.toLocaleString()+'</b><br><span class="muted">Labour / Opposition votes</span></span>'+
+        '<span class="kpi"><b>'+(f.lead>=0?'+':'')+f.lead.toFixed(1)+' pts</b><br><span class="muted">Projected lead</span></span></div>'+
+        '<h2>Historical Comparison <span style="font-size:12px;font-weight:400;color:#64748b">(actual verified results)</span></h2>'+
+        (histRows.length?'<table><tr><th>Year</th><th>Party</th><th>Candidate</th><th>Votes</th><th>Share</th><th>Result</th><th>Confidence</th><th>Source</th></tr>'+histRows.map(h=>'<tr><td>'+h.electionYear+'</td><td>'+esc(h.party)+(h.isSample?' (sample)':'')+'</td><td>'+esc(h.candidate||'—')+'</td><td>'+(h.votes!=null?(+h.votes).toLocaleString():'n/a')+'</td><td>'+(h.voteShare!=null?h.voteShare+'%':'n/a')+'</td><td>'+esc(h.result||'—')+'</td><td>'+esc(h.verified===false?'Unverified':(h.confidence||'High'))+'</td><td>'+(h.sourceUrl?'<a href="'+esc(h.sourceUrl)+'">'+esc(h.sourceName||'source')+'</a>':esc(h.sourceName||'—'))+'</td></tr>').join('')+'</table>':'<p class="muted">No verified historical results stored for this constituency.</p>')+
+        (f.swing!=null?'<p>Projected swing vs '+f.lastLab.electionYear+': <b class="'+(f.swing>=0?'pos':'neg')+'">'+(f.swing>=0?'+':'')+f.swing.toFixed(1)+' pts</b></p>':'')+
+        '<h2>Voter Sentiment</h2>'+
+        '<p><b>Support distribution:</b> '+supLevels.filter(l=>supCounts[l]).map(l=>supCounts[l]+' '+l).join(', ')+'</p>'+
+        '<p><b>Top emotional blocs:</b> '+(topBlocs.length?topBlocs.map(b=>esc(b[0])+' ('+b[1]+')').join(', '):'—')+'</p>'+
+        '<p><b>Support movement:</b> '+hist.length+' logged support changes in this constituency (engagement signal).</p>'+
+        '<h2>Major Factors Influencing the Forecast</h2><ul>'+f.factors.map(x=>'<li><b>'+esc(x.label)+':</b> '+esc(x.detail)+'</li>').join('')+'</ul>'+
+        '<h2>Key Risks &amp; Recommended Focus</h2><ul>'+f.risks.map(r=>'<li>'+esc(r)+'</li>').join('')+'</ul>'+
+        '<h2>Scenario Assumptions Used</h2><p class="muted">'+FC_SLIDERS.map(s=>esc(s.label)+': '+FC_SCENARIO[s.key]+s.unit).join(' · ')+'</p>'+
+        '<h2>Methodology</h2><p class="muted">Projection combines current support levels, commitment, contact/canvassing penetration, overseas return likelihood, and (where available) historical results. Per-voter Labour probability and turnout probability are estimated by support level and commitment, adjusted by the scenario assumptions above, then aggregated. Confidence reflects projected margin and data coverage. Figures are probabilistic estimates, not guaranteed outcomes.</p>'+
+        '</body></html>';
+    downloadFile('forecast_'+constId+'_'+(new Date().toISOString().split('T')[0])+'.html',html,'text/html');
+    addActivity('exported forecast report for '+constId,'🔮');toast('Forecast report exported (open the .html, then Print → Save as PDF if needed)','success');
+}
+
 // ===== ANALYTICS STUDIO =====
 function syncAnIslandFromConst(){
     const cf=document.getElementById('anConstFilter')?.value||'';
@@ -2659,7 +3040,7 @@ function renderAnalytics(){
     // Casework by category
     const cwCat={};(d.casework||[]).forEach(c=>{cwCat[c.category||'Other']=(cwCat[c.category||'Other']||0)+1});
     const cwKeys=Object.keys(cwCat).sort((a,b)=>cwCat[b]-cwCat[a]);
-    Plotly.react('anCasework',[{type:'bar',orientation:'h',y:cwKeys.reverse(),x:cwKeys.map(k=>cwCat[k]),marker:{color:'#1e3a5f'}}],Object.assign({margin:{t:20,r:15,b:40,l:140}},plotlyTheme()),PLOTLY_CONFIG);
+    Plotly.react('anCasework',[{type:'bar',orientation:'h',y:cwKeys.reverse(),x:cwKeys.map(k=>cwCat[k]),marker:{color:'#1e3a5f'}}],Object.assign(plotlyTheme(),{margin:{t:20,r:15,b:40,l:150},yaxis:{automargin:true}}),PLOTLY_CONFIG);
     renderConstPerf(d);
     renderSupportTrend();
 }
@@ -2688,7 +3069,7 @@ function barFromCounts(elId,counts,color,orient){
     const keys=Object.keys(counts).filter(k=>counts[k]>0).sort((a,b)=>counts[b]-counts[a]);
     if(!keys.length){Plotly.react(elId,[],Object.assign({annotations:[{text:'No data yet',showarrow:false,font:{size:14,color:'#94a3b8'}}]},plotlyTheme()),PLOTLY_CONFIG);return}
     if(orient==='h'){
-        Plotly.react(elId,[{type:'bar',orientation:'h',y:keys.slice().reverse(),x:keys.slice().reverse().map(k=>counts[k]),marker:{color:color}}],Object.assign({margin:{t:20,r:15,b:40,l:140}},plotlyTheme()),PLOTLY_CONFIG);
+        Plotly.react(elId,[{type:'bar',orientation:'h',y:keys.slice().reverse(),x:keys.slice().reverse().map(k=>counts[k]),marker:{color:color}}],Object.assign(plotlyTheme(),{margin:{t:20,r:15,b:40,l:150},yaxis:{automargin:true}}),PLOTLY_CONFIG);
     }else{
         Plotly.react(elId,[{type:'bar',x:keys,y:keys.map(k=>counts[k]),marker:{color:color}}],Object.assign({},plotlyTheme()),PLOTLY_CONFIG);
     }
@@ -2711,7 +3092,7 @@ function renderSupportHeatmap(vs){
         }
         z.push(row);y.push(c.id);text.push(trow);
     });
-    Plotly.react('anHeatmap',[{type:'heatmap',z:z,y:y,x:Array.from({length:maxPDs},(_,i)=>'PD'+(i+1)),text:text,hoverinfo:'text',colorscale:[[0,'#dc2626'],[0.45,'#d97706'],[0.55,'#facc15'],[1,'#059669']],zmin:0,zmax:100,colorbar:{title:'Support %'}}],Object.assign({margin:{t:20,r:15,b:40,l:50}},plotlyTheme()),PLOTLY_CONFIG);
+    Plotly.react('anHeatmap',[{type:'heatmap',z:z,y:y,x:Array.from({length:maxPDs},(_,i)=>'PD'+(i+1)),text:text,hoverinfo:'text',colorscale:[[0,'#dc2626'],[0.45,'#d97706'],[0.55,'#facc15'],[1,'#059669']],zmin:0,zmax:100,colorbar:{title:'Support %'}}],Object.assign(plotlyTheme(),{margin:{t:20,r:15,b:40,l:55},xaxis:{automargin:true}}),PLOTLY_CONFIG);
 }
 function renderConstPerf(d){
     const tb=document.getElementById('constPerfTable');
@@ -2898,7 +3279,7 @@ function renderOverseas(){
     // By location
     const locs={};all.forEach(v=>{const l=v.overseasLocation||'Unknown';locs[l]=(locs[l]||0)+1});
     const locKeys=Object.keys(locs).sort((a,b)=>locs[b]-locs[a]).slice(0,10);
-    Plotly.react('overseasLocations',[{type:'bar',orientation:'h',y:locKeys.slice().reverse(),x:locKeys.slice().reverse().map(k=>locs[k]),marker:{color:'#1e3a5f'}}],Object.assign({margin:{t:20,r:15,b:40,l:120}},plotlyTheme()),PLOTLY_CONFIG);
+    Plotly.react('overseasLocations',[{type:'bar',orientation:'h',y:locKeys.slice().reverse(),x:locKeys.slice().reverse().map(k=>locs[k]),marker:{color:'#1e3a5f'}}],Object.assign(plotlyTheme(),{margin:{t:20,r:15,b:40,l:130},yaxis:{automargin:true}}),PLOTLY_CONFIG);
     // By constituency
     const consts=filteredConsts();
     Plotly.react('overseasConst',[{type:'bar',x:consts.map(c=>c.id),y:consts.map(c=>all.filter(v=>v.constituencyId===c.id).length),marker:{color:'#7c3aed'}}],Object.assign({},plotlyTheme()),PLOTLY_CONFIG);
@@ -3203,9 +3584,11 @@ function exportTargetList(){
     if(!can('export')){toast('Your role cannot export data','error');return}
     const l=activeList();if(!l)return;
     const members=(CACHE.voters||[]).filter(v=>v.targetList===l.name);
-    const h='firstName,lastName,voterId,constituency,pd,phone,support\n';
-    const rows=members.map(v=>`${v.firstName},${v.lastName},${v.voterId},${v.constituencyId},${v.pollingDivisionId},${v.phone||''},${v.supportLevel||v.category||''}`).join('\n');
-    downloadFile('targetlist_'+l.name.replace(/\W+/g,'_')+'.csv',h+rows,'text/csv');toast('Exported','success');
+    const esc=s=>{s=(s===undefined||s===null)?'':String(s);return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s};
+    const cols=['firstName','middleName','lastName','alias','voterId','constituency','pollingStation','phone','email','supportLevel','commitment','emotionalBloc','isOverseas','overseasLocation','returnStatus','livesOutside','residenceLocation'];
+    const h=cols.join(',')+'\n';
+    const rows=members.map(v=>[v.firstName,v.middleName,v.lastName,v.alias,v.voterId,v.constituencyId,v.pollingDivisionId,v.phone,v.email,v.supportLevel||v.category||'',v.commitment,v.emotionalBloc,v.isOverseas?'Yes':'No',v.overseasLocation,v.returnStatus,v.livesOutside?'Yes':'No',v.residenceLocation].map(esc).join(',')).join('\n');
+    downloadFile('targetlist_'+l.name.replace(/\W+/g,'_')+'.csv',h+rows,'text/csv');toast('Exported '+members.length+' voters','success');
 }
 
 // ===== CELL CAPTAINS =====
@@ -3611,6 +3994,8 @@ async function replayOfflineQueue(){
     if(!queue.length){updateSyncStatus('online');return}
     if(!navigator.onLine){updateSyncStatus('offline');return}
     console.log('[OFFLINE] Replaying',queue.length,'queued ops');
+    // Heal legacy results ops queued before the constituency_id fix
+    queue.forEach(op=>{if(op&&op.type==='upsert'&&op.table==='results')op.onConflict='constituency_id'});
     // Clear first; syncOps re-queues on failure so nothing is lost
     localStorage.removeItem('offline_queue');
     try{await syncOps(queue)}catch(e){queueOffline(queue)}
@@ -3803,7 +4188,7 @@ function buildCampaignQueue(){
 function renderCampaignQueue(channel){
     const q=document.getElementById('campaignQueue');
     const sentCount=CAMPAIGN_QUEUE.filter(x=>x.sent).length;
-    let html='<div style="margin-bottom:.75rem"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem"><span style="font-size:.8125rem"><strong>'+sentCount+'</strong> / '+CAMPAIGN_QUEUE.length+' sent</span><div style="display:flex;gap:.5rem"><button class="btn btn-xs btn-success" onclick="saveCampaignRecord()">💾 Save</button><button class="btn btn-xs btn-outline" onclick="copyAllMessages()">📋 Copy All</button></div></div><div style="display:flex;gap:.5rem;flex-wrap:wrap"><button class="btn btn-sm btn-primary" style="flex:1;min-width:140px" onclick="startBatchSend(\''+channel+'\')">🚀 Batch Send</button><button class="btn btn-sm btn-outline" onclick="openBroadcastHelper(\''+channel+'\')">📢 Broadcast / Bulk</button></div></div>';
+    let html='<div style="margin-bottom:.75rem"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem"><span style="font-size:.8125rem"><strong>'+sentCount+'</strong> / '+CAMPAIGN_QUEUE.length+' sent</span><div style="display:flex;gap:.5rem"><button class="btn btn-xs btn-success" onclick="saveCampaignRecord()">💾 Save</button><button class="btn btn-xs btn-outline" onclick="copyAllMessages()">📋 Copy All</button></div></div><div style="display:flex;gap:.5rem;flex-wrap:wrap"><button class="btn btn-sm btn-primary" style="flex:1;min-width:140px" onclick="startBatchSend(\''+channel+'\')">🚀 Batch Send</button><button class="btn btn-sm btn-outline" onclick="openBroadcastHelper(\''+channel+'\')">📢 Broadcast / Bulk</button>'+(channel==='whatsapp'?'<button class="btn btn-sm btn-success" style="flex:1;min-width:140px" onclick="autoSendViaAPI()">⚡ Auto-Send (API)</button>':'')+'</div></div>';
     html+='<div class="progress-bar mb-2"><div class="progress-fill success" style="width:'+(CAMPAIGN_QUEUE.length?Math.round(sentCount/CAMPAIGN_QUEUE.length*100):0)+'%"></div></div>';
     html+='<div style="max-height:420px;overflow-y:auto">';
     CAMPAIGN_QUEUE.slice(0,200).forEach((item,idx)=>{
@@ -3976,6 +4361,53 @@ window.addEventListener('focus',()=>{
     }
 });
 // Shared: log a send without re-rendering the main queue
+// ===== AUTOMATED BULK SEND via Supabase Edge Function (WhatsApp Cloud API / Twilio) =====
+// The Edge Function holds the API credentials server-side. The app calls it with the
+// authenticated user's session token. See whatsapp-edge-function/README for setup.
+function whatsappFnUrl(){
+    const override=localStorage.getItem('wa_fn_url');
+    if(override)return override;
+    const url=localStorage.getItem('sb_url');
+    return url?url.replace(/\/$/,'')+'/functions/v1/send-whatsapp':null;
+}
+async function autoSendViaAPI(){
+    if(!can('comms')){toast('Your role cannot send comms','error');return}
+    const fnUrl=whatsappFnUrl();
+    if(!fnUrl){toast('Supabase not configured','error');return}
+    const pending=CAMPAIGN_QUEUE.map((q,i)=>({i,q})).filter(x=>!x.q.sent&&x.q.voter.phone);
+    if(!pending.length){toast('Nothing to send (all sent or no phone numbers)','info');return}
+    if(!confirm('Automatically send '+pending.length+' personalized WhatsApp messages via the API?\n\nThis requires the send-whatsapp Edge Function to be deployed with your WhatsApp credentials. Messages send server-side with no manual tapping.'))return;
+    let token=null;
+    try{const{data}=await SB.auth.getSession();token=data?.session?.access_token}catch(e){}
+    toast('Sending '+pending.length+' messages…','info');
+    let ok=0,failArr=[];
+    const BATCH=25;
+    for(let b=0;b<pending.length;b+=BATCH){
+        const slice=pending.slice(b,b+BATCH);
+        const payload={messages:slice.map(x=>({to:x.q.voter.phone,body:x.q.message,voterId:x.q.voter.id}))};
+        try{
+            const res=await fetch(fnUrl,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(token||localStorage.getItem('sb_anon')||'')},body:JSON.stringify(payload)});
+            if(!res.ok){const t=await res.text();throw new Error('HTTP '+res.status+' '+t.slice(0,120))}
+            const out=await res.json();
+            (out.results||[]).forEach((r,k)=>{
+                if(r.success){logQueueSend(slice[k].i,'whatsapp');ok++}
+                else failArr.push((slice[k].q.voter.phone||'?')+': '+(r.error||'failed'));
+            });
+        }catch(err){
+            failArr.push('Batch error: '+err.message);
+            // Stop on a hard error (likely missing function / bad credentials) to avoid spamming
+            break;
+        }
+        renderCampaignQueue();
+    }
+    addActivity('auto-sent '+ok+' WhatsApp via API','⚡');
+    if(failArr.length){
+        toast('Sent '+ok+', '+failArr.length+' failed. See details.','warning');
+        alert('Auto-send finished.\n\nSent: '+ok+'\nFailed: '+failArr.length+'\n\n'+failArr.slice(0,8).join('\n')+(failArr.length>8?'\n…':'')+'\n\nIf ALL failed, the Edge Function may not be deployed or credentials are missing. See the whatsapp-edge-function README.');
+    }else{
+        toast('✅ All '+ok+' messages sent via API','success');
+    }
+}
 function logQueueSend(idx,channel){
     if(!CAMPAIGN_QUEUE[idx]||CAMPAIGN_QUEUE[idx].sent)return;
     CAMPAIGN_QUEUE[idx].sent=true;
